@@ -3,23 +3,22 @@ Stores details about the available payment options.
 Also stores credit card info in an encrypted format.
 """
 
+from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField
 from Crypto.Cipher import Blowfish
 from datetime import datetime
 from decimal import Decimal
 from django.conf import settings
+from django.contrib.contenttypes import generic
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from livesettings import config_value, config_choice_values, SettingNotSet
-from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField
-from satchmo_store.contact.models import Contact
-from satchmo_store.shop.models import OrderPayment
 import base64
 import config
 import keyedcache
 import logging
-import satchmo_utils.sslurllib
 
-log = logging.getLogger('payment.models')
+log = logging.getLogger('bursar.models')
         
 class PaymentOption(models.Model):
     """
@@ -43,8 +42,9 @@ class CreditCardDetail(models.Model):
     Stores an encrypted CC number, its information, and its
     displayable number.
     """
-    orderpayment = models.ForeignKey(OrderPayment, unique=True, 
-        related_name="creditcards")
+	orderpayment_content_type = models.ForeignKey(ContentType)
+	orderpayment_id = models.PositiveIntegerField()
+	orderpayment = generic.GenericForeignKey('orderpayment_content_type', 'orderpayment_id')
     credit_type = CreditChoiceCharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
         max_length=4, )
@@ -64,7 +64,7 @@ class CreditCardDetail(models.Model):
         if config_value('GATEWAY', 'STORE_CREDIT_NUMBERS'):
             self.encrypted_cc = encrypted_cc
         else:
-            standin = "%s%i%i%i" % (self.display_cc, self.expire_month, self.expire_year, self.orderpayment.id)
+            standin = "%s%i%i%i" % (self.display_cc, self.expire_month, self.expire_year, self.orderpayment_id)
             self.encrypted_cc = _encrypt_code(standin)
             key = _encrypt_code(standin + '-card')
             keyedcache.cache_set(key, skiplog=True, length=60*60, value=encrypted_cc)
