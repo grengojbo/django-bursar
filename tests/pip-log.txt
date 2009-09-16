@@ -1,0 +1,75 @@
+Obtaining sorl-thumbnail from hg+https://sorl-thumbnail.googlecode.com/hg/#egg=sorl-thumbnail
+  Cloning hg https://sorl-thumbnail.googlecode.com/hg/ to ./src/sorl-thumbnail
+  Running command hg clone -q https://sorl-thumbnail.googlecode.com/hg/ /opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail
+  Running command hg update -q
+  Running setup.py egg_info for package sorl-thumbnail
+    running egg_info
+    creating sorl_thumbnail.egg-info
+    writing sorl_thumbnail.egg-info/PKG-INFO
+    writing top-level names to sorl_thumbnail.egg-info/top_level.txt
+    writing dependency_links to sorl_thumbnail.egg-info/dependency_links.txt
+    writing manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+    warning: manifest_maker: standard file '-c' not found
+    reading manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+    reading manifest template 'MANIFEST.in'
+    writing manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+Installing collected packages: sorl-thumbnail
+  Running setup.py develop for sorl-thumbnail
+    Running command /usr/bin/python -c "import setuptools; __file__='/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py'; execfile('/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py')" develop --no-deps
+    running develop
+    running egg_info
+    writing sorl_thumbnail.egg-info/PKG-INFO
+    writing top-level names to sorl_thumbnail.egg-info/top_level.txt
+    writing dependency_links to sorl_thumbnail.egg-info/dependency_links.txt
+    warning: manifest_maker: standard file '-c' not found
+    reading manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+    reading manifest template 'MANIFEST.in'
+    writing manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+    running build_ext
+    Creating /Library/Python/2.6/site-packages/sorl-thumbnail.egg-link (link to .)
+    Adding sorl-thumbnail 3.2.3 to easy-install.pth file
+    error: /Library/Python/2.6/site-packages/easy-install.pth: Permission denied
+    Complete output from command /usr/bin/python -c "import setuptools; __file__='/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py'; execfile('/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py')" develop --no-deps:
+    running develop
+
+running egg_info
+
+writing sorl_thumbnail.egg-info/PKG-INFO
+
+writing top-level names to sorl_thumbnail.egg-info/top_level.txt
+
+writing dependency_links to sorl_thumbnail.egg-info/dependency_links.txt
+
+warning: manifest_maker: standard file '-c' not found
+
+reading manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+
+reading manifest template 'MANIFEST.in'
+
+writing manifest file 'sorl_thumbnail.egg-info/SOURCES.txt'
+
+running build_ext
+
+Creating /Library/Python/2.6/site-packages/sorl-thumbnail.egg-link (link to .)
+
+Adding sorl-thumbnail 3.2.3 to easy-install.pth file
+
+error: /Library/Python/2.6/site-packages/easy-install.pth: Permission denied
+
+----------------------------------------
+Command /usr/bin/python -c "import setuptools; __file__='/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py'; execfile('/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py')" develop --no-deps failed with error code 1
+Exception information:
+Traceback (most recent call last):
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 274, in main
+    self.run(options, args)
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 433, in run
+    requirement_set.install(install_options)
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 2082, in install
+    requirement.install(install_options)
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 1552, in install
+    self.install_editable()
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 1620, in install_editable
+    show_stdout=False)
+  File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 3643, in call_subprocess
+    % (command_desc, proc.returncode))
+InstallationError: Command /usr/bin/python -c "import setuptools; __file__='/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py'; execfile('/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py')" develop --no-deps failed with error code 1

@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ImproperlyConfigured
 from bursar import signals
 from bursar.forms import SimplePayShipForm
-from bursar.modules.purchaseorder.models import PurchaseOrder
+from bursar.gateway.purchaseorder.models import PurchaseOrder
 from satchmo_utils import app_enabled
 from signals_ahoy import signals
 

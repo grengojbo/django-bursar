@@ -6,7 +6,7 @@ interface.
 See the authorizenet module for the reference implementation
 """
 from django.utils.translation import ugettext_lazy as _
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 
 class PaymentProcessor(BasePaymentProcessor):
 
@@ -53,7 +53,7 @@ class PaymentProcessor(BasePaymentProcessor):
         Example:
         >>> from livesettings import config_get_group
         >>> settings = config_get_group('GATEWAY_DUMMY')
-        >>> from bursar.modules.dummy.processor import PaymentProcessor
+        >>> from bursar.gateway.dummy.processor import PaymentProcessor
         >>> processor = PaymentProcessor(settings)
         # If using a normal payment gateway, data should be an Order object.
         >>> data = {}

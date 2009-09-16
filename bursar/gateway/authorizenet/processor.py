@@ -1,4 +1,4 @@
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 from datetime import datetime
 from decimal import Decimal
 from django.template import loader, Context

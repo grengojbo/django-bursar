@@ -2,7 +2,7 @@
 from django import forms
 from django.utils.translation import ugettext as _
 from bursar.forms import CreditPayShipForm, MONTHS
-from bursar.modules.protx.config import REQUIRES_ISSUE_NUMBER
+from bursar.gateway.protx.config import REQUIRES_ISSUE_NUMBER
 import logging
 
 log = logging.getLogger('payment.protx.forms')

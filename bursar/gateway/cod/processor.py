@@ -2,7 +2,7 @@
 Handle a cash-on-delivery payment.
 """
 from django.utils.translation import ugettext as _
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 
 class PaymentProcessor(BasePaymentProcessor):
     """COD Payment Processor"""

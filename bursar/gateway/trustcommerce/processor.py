@@ -5,7 +5,7 @@ http://www.trustcommerce.com/tclink.html
 """
 
 from django.utils.translation import ugettext_lazy as _
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 import tclink
 
 class PaymentProcessor(BasePaymentProcessor):

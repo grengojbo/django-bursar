@@ -1,4 +1,4 @@
-from bursar.config import credit_choices, labelled_gateway_choices
+from payment.config import credit_choices, labelled_gateway_choices
 from django import forms
 from django.db import models
 from django.db.models.fields import DecimalField

@@ -1,4 +1,4 @@
-from bursar.modules.purchaseorder.models import PurchaseOrder
+from bursar.gateway.purchaseorder.models import PurchaseOrder
 from django.contrib import admin
 
 class PurchaseOrderOptions(admin.ModelAdmin):

@@ -1,5 +1,5 @@
 from django.template import Context, loader
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 from bursar.numbers import trunc_decimal
 from django.utils.translation import ugettext_lazy as _
 

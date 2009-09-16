@@ -4,7 +4,7 @@ GiftCertificate processor
 from django.utils.translation import ugettext as _
 from l10n.utils import moneyfmt
 from models import GiftCertificate
-from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 
 class PaymentProcessor(BasePaymentProcessor):
 

@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from l10n.utils import moneyfmt
 from livesettings import config_value
-from bursar.modules.giftcertificate.utils import generate_certificate_code
+from bursar.gateway.giftcertificate.utils import generate_certificate_code
 from bursar.utils import get_processor_by_key
 from product.models import Product
 from satchmo_store.contact.models import Contact

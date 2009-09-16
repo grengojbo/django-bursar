@@ -3,7 +3,7 @@ Stores details about the available payment options.
 Also stores credit card info in an encrypted format.
 """
 
-from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField
+from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField, CurrencyField
 from Crypto.Cipher import Blowfish
 from datetime import datetime
 from decimal import Decimal
@@ -236,6 +236,7 @@ class Purchase(models.Model):
     Collects information about an order and tracks
     its state.
     """
+    orderno = models.CharField(_("Order Number"), max_length=20)
     method = models.CharField(_("Order method"), max_length=50, blank=True)
     first_name = models.CharField(_("First name"), max_length=30)
     last_name = models.CharField(_("Last name"), max_length=30)
@@ -270,6 +271,28 @@ class Purchase(models.Model):
     def __unicode__(self):
         return "Purchase #%s: %s" % (self.id, self.contact.full_name)
 
+    @property
+    def authorized_remaining(self):
+        """Returns the total value of all un-captured authorizations"""
+        auths = [p.amount for p in self.authorizations.filter(complete=False)]
+        if auths:
+            amount = reduce(operator.add, auths)
+        else:
+            amount = Decimal('0.00')
+
+        return amount
+        
+    @property
+    def total_payments(self):
+        """Returns the total value of all completed payments"""
+        payments = [p.amount for p in self.authorizations.filter(complete=False)]
+        if payments:
+            amount = reduce(operator.add, payments)
+        else:
+            amount = Decimal('0.00')
+            
+        return amount
+        
 class LineItem(models.Model):
     """A single line item in a purchase.  This is optional, only needed for certain
     gateways such as Google or PayPal."""

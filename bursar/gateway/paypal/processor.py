@@ -1,4 +1,4 @@
-from bursar.modules.base import HeadlessPaymentProcessor
+from bursar.gateway.base import HeadlessPaymentProcessor
 
 class PaymentProcessor(HeadlessPaymentProcessor):
 
