@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 from livesettings import config_get_group
-from satchmo_store.shop.models import Order, OrderAuthorization, OrderPayment, OrderPaymentFailure, OrderPendingPayment, OrderStatus
+from satchmo_store.shop.models import Order, Authorization, Payment, PaymentFailure, PaymentPending, OrderStatus
 import logging
 
 log = logging.getLogger('payment.modules.base')
@@ -144,7 +144,7 @@ class BasePaymentProcessor(object):
     def record_failure(self, amount=NOTSET, transaction_id="", reason_code="", 
         authorization=None, order=None, details=""):
         """
-        Add an OrderPaymentFailure record
+        Add an PaymentFailure record
         """
         log.debug('record_failure for %s', order)
         if not order:
@@ -200,7 +200,7 @@ class PaymentRecorder(object):
         self._amount = NOTSET
         self.transaction_id = ""
         self.reason_code = ""
-        self.orderpayment = None
+        self.payment = None
         self.pending = None
         
     def _set_amount(self, amount):
@@ -229,29 +229,29 @@ class PaymentRecorder(object):
         self._get_pending()
 
         if self.pending:
-            self.orderpayment = OrderAuthorization()
-            self.orderpayment.capture = self.pending.capture
+            self.payment = Authorization()
+            self.payment.capture = self.pending.capture
             
             if amount == NOTSET:
                 self.set_amount_from_pending()
             
         else:
             log.debug("No pending %s authorizations for %s", self.key, self.order)
-            self.orderpayment = OrderAuthorization(
+            self.payment = Authorization(
                 order=self.order, 
                 payment=self.key)
 
         self.cleanup()
-        return self.orderpayment
+        return self.payment
 
     def capture_authorized_payment(self, authorization, amount=NOTSET):
         """Convert an authorization into a payment."""
         self.amount = amount
         log.debug("Recording %s capture of authorization #%i for %s", self.key, authorization.id, self.order)
 
-        self.orderpayment = authorization.capture
+        self.payment = authorization.capture
         self.cleanup()
-        return self.orderpayment
+        return self.payment
 
     def capture_payment(self, amount=NOTSET):
         """Make a direct payment without a prior authorization, using the existing pending payment if found."""
@@ -260,8 +260,8 @@ class PaymentRecorder(object):
         self._get_pending()
         
         if self.pending:
-            self.orderpayment = self.pending.capture
-            log.debug("Using linked payment: %s", self.orderpayment)
+            self.payment = self.pending.capture
+            log.debug("Using linked payment: %s", self.payment)
 
             if amount == NOTSET:
                 self.set_amount_from_pending()
@@ -269,19 +269,19 @@ class PaymentRecorder(object):
         else:
             log.debug("No pending %s payments for %s", self.key, self.order)
         
-            self.orderpayment = OrderPayment(
+            self.payment = Payment(
                 order=self.order, 
                 payment=self.key)
                 
         log.debug("Recorded %s payment of %s for %s", self.key, self.amount, self.order)
         self.cleanup()
-        return self.orderpayment
+        return self.payment
         
     def record_failure(self, amount=NOTSET, details="", authorization=None):
         log.info('Recording a payment failure: order #%i, code %s\nmessage=%s', self.order.id, self.reason_code, details)
         self.amount = amount
             
-        failure = OrderPaymentFailure.objects.create(order=self.order, 
+        failure = PaymentFailure.objects.create(order=self.order, 
             details=details, 
             transaction_id=self.transaction_id,
             amount = self.amount,
@@ -293,25 +293,25 @@ class PaymentRecorder(object):
     def cleanup(self):
         if self.pending:
             pending = self.pending
-            self.orderpayment.capture = pending.capture
-            self.orderpayment.order = pending.order
-            self.orderpayment.payment = pending.payment
-            self.orderpayment.details = pending.details
+            self.payment.capture = pending.capture
+            self.payment.order = pending.order
+            self.payment.payment = pending.payment
+            self.payment.details = pending.details
 
-            # delete any extra pending orderpayments
+            # delete any extra pending payments
             for p in self.pendingpayments:
                 if p != pending and p.capture.transaction_id=='LINKED':
                     p.capture.delete()
                 p.delete()
 
-        self.orderpayment.reason_code=self.reason_code
-        self.orderpayment.transaction_id=self.transaction_id
-        self.orderpayment.amount=self.amount
+        self.payment.reason_code=self.reason_code
+        self.payment.transaction_id=self.transaction_id
+        self.payment.amount=self.amount
 
-        self.orderpayment.time_stamp = datetime.now()
-        self.orderpayment.save()
+        self.payment.time_stamp = datetime.now()
+        self.payment.save()
 
-        order = self.orderpayment.order
+        order = self.payment.order
 
         if order.paid_in_full:
             def _latest_status(order):
@@ -347,7 +347,7 @@ class PaymentRecorder(object):
         
         log.debug("Creating pending %s payment of %s for %s", self.key, amount, self.order)
 
-        self.pending = OrderPendingPayment.objects.create(order=self.order, amount=amount, payment=self.key)
+        self.pending = PaymentPending.objects.create(order=self.order, amount=amount, payment=self.key)
         return self.pending
 
     def set_amount_from_pending(self):
@@ -370,7 +370,7 @@ class ProcessorResult(object):
         processor - the key of the processor setting the result
         success - boolean
         message - a lazy string label, such as _('OK)
-        payment - an OrderPayment or OrderAuthorization
+        payment - an Payment or Authorization
         """
         self.success = success
         self.processor = processor

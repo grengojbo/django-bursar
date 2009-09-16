@@ -165,7 +165,7 @@ if __name__ == "__main__":
     sampleOrder.credit_card.expire_year = "2010"
     sampleOrder.credit_card.ccv = "123"
     sampleOrder.credit_card.order = "987654"
-    sampleOrder.credit_card.orderpayment_id = "123"
+    sampleOrder.credit_card.payment_id = "123"
     
     trustcommerce_settings = config_get_group('GATEWAY_TRUSTCOMMERCE')
 

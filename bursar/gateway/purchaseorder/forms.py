@@ -16,7 +16,7 @@ class PurchaseorderPayShipForm(SimplePayShipForm):
         super(PurchaseorderPayShipForm, self).__init__(*args, **kwargs)
     
     def save(self, request, cart, contact, payment_module):
-        """Save the order and the po information for this orderpayment"""
+        """Save the order and the po information for this payment"""
         signals.form_presave.send(PurchaseorderPayShipForm, form=self)
         super(PurchaseorderPayShipForm, self).save(request, cart, contact, payment_module)
         data = self.cleaned_data

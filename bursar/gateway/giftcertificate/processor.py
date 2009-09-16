@@ -47,7 +47,7 @@ class PaymentProcessor(BasePaymentProcessor):
 
             else:
                 gc.apply_to_order(self.order)
-                payment = gc.orderpayment
+                payment = gc.payment
                 reason_code = "0"
                 response_text = _("Success")
                 success = True

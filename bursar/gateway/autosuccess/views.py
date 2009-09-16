@@ -6,7 +6,7 @@ from django.views.decorators.cache import never_cache
 from livesettings import config_get_group
 from bursar.utils import pay_ship_save, get_processor_by_key
 from satchmo_store.shop.models import Cart
-from satchmo_store.shop.models import Order, Contact, OrderPayment
+from satchmo_store.shop.models import Order, Contact, Payment
 from satchmo_utils.dynamic import lookup_url, lookup_template
 
 import logging

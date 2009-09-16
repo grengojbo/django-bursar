@@ -62,8 +62,8 @@ class PaymentProcessor(BasePaymentProcessor):
         ProcessorResult: DUMMY [Success] Success
         """
         
-        orderpayment = self.record_payment(amount=amount, reason_code="0")
-        return ProcessorResult(self.key, True, _('Success'), orderpayment)
+        payment = self.record_payment(amount=amount, reason_code="0")
+        return ProcessorResult(self.key, True, _('Success'), payment)
 
 
     def capture_authorized_payment(self, authorization, amount=NOTSET):
@@ -73,10 +73,10 @@ class PaymentProcessor(BasePaymentProcessor):
         if amount == NOTSET:
             amount = authorization.remaining()
 
-        orderpayment = self.record_payment(amount=amount, reason_code="0", 
+        payment = self.record_payment(amount=amount, reason_code="0", 
             transaction_id="dummy", authorization=authorization)
         
-        return ProcessorResult(self.key, True, _('Success'), orderpayment)
+        return ProcessorResult(self.key, True, _('Success'), payment)
         
     def release_authorized_payment(self, order=None, auth=None, testing=False):
         """Release a previously authorized payment."""

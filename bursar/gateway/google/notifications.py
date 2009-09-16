@@ -6,7 +6,7 @@ Created on 3 Mar 2009
 from django.utils.translation import ugettext as _
 from livesettings import config_get_group
 from bursar.utils import get_processor_by_key
-from satchmo_store.shop.models import Cart, Order, OrderPayment
+from satchmo_store.shop.models import Cart, Order, Payment
 import re
 
 def find_order(data):
@@ -14,7 +14,7 @@ def find_order(data):
     Helper function to find order using a google id
     """
     transaction_id = data['google-order-number']
-    payment = OrderPayment.objects.filter(transaction_id__exact=transaction_id)[0]
+    payment = Payment.objects.filter(transaction_id__exact=transaction_id)[0]
     order = payment.order
     return order
 

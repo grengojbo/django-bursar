@@ -11,7 +11,7 @@ from bursar.config import gateway_live
 from bursar.utils import get_processor_by_key
 from bursar.views import payship
 from satchmo_store.shop.models import Cart
-from satchmo_store.shop.models import Order, OrderPayment
+from satchmo_store.shop.models import Order, Payment
 from satchmo_utils.dynamic import lookup_url, lookup_template
 from sys import exc_info
 from traceback import format_exception
@@ -134,7 +134,7 @@ def ipn(request):
         gross = data['mc_gross']
         txn_id = data['txn_id']
 
-        if not OrderPayment.objects.filter(transaction_id=txn_id).count():
+        if not Payment.objects.filter(transaction_id=txn_id).count():
             # If the payment hasn't already been processed:
             order = Order.objects.get(pk=invoice)
             

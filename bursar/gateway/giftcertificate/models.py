@@ -10,7 +10,7 @@ from bursar.modules.giftcertificate.utils import generate_certificate_code
 from bursar.utils import get_processor_by_key
 from product.models import Product
 from satchmo_store.contact.models import Contact
-from satchmo_store.shop.models import OrderPayment, Order
+from satchmo_store.shop.models import Payment, Order
 import logging
 
 GIFTCODE_KEY = 'GIFTCODE'
@@ -67,14 +67,14 @@ class GiftCertificate(models.Model):
             moneyfmt(order.balance))
             
         processor = get_processor_by_key('GATEWAY_GIFTCERTIFICATE')
-        orderpayment = processor.record_payment(order=order, amount=amount)
-        self.orderpayment = orderpayment
-        return self.use(amount, orderpayment=orderpayment)
+        payment = processor.record_payment(order=order, amount=amount)
+        self.payment = payment
+        return self.use(amount, payment=payment)
 
-    def use(self, amount, notes="", orderpayment=None):
+    def use(self, amount, notes="", payment=None):
         """Use some amount of the gift cert, returning the current balance."""
         u = GiftCertificateUsage(notes=notes, balance_used = amount,
-            orderpayment=orderpayment, giftcertificate=self)
+            payment=payment, giftcertificate=self)
         u.save()
         return self.balance
 
@@ -102,7 +102,7 @@ class GiftCertificateUsage(models.Model):
     notes = models.TextField(_('Notes'), blank=True, null=True)
     balance_used = models.DecimalField(_("Amount Used"), decimal_places=2,
         max_digits=8, )
-    orderpayment = models.ForeignKey(OrderPayment, null=True, verbose_name=_('Order Payment'))
+    payment = models.ForeignKey(Payment, null=True, verbose_name=_('Order Payment'))
     used_by = models.ForeignKey(Contact, verbose_name=_('Used by'),
         blank=True, null=True, related_name='giftcertificates_used')
     giftcertificate = models.ForeignKey(GiftCertificate, related_name='usages')
