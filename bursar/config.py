@@ -1,12 +1,10 @@
-from django.utils.translation import ugettext_lazy, ugettext
+from bursar.utils import is_string_like
+from django.utils.translation import ugettext, ugettext_lazy as _
 from livesettings import *
-from satchmo_utils import is_string_like
 import logging
 import signals
 
-_ = ugettext_lazy
-
-log = logging.getLogger('payment.config')
+log = logging.getLogger('bursar.config')
 
 GATEWAY_GROUP = ConfigurationGroup('GATEWAY', _('Bursar Settings'))
 

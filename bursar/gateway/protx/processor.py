@@ -10,7 +10,7 @@ will fall back to the defaults for any not specified in your dictionary.
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
-from satchmo_utils.numbers import trunc_decimal
+from bursar.numbers import trunc_decimal
 from django.utils.http import urlencode
 import forms
 import urllib2

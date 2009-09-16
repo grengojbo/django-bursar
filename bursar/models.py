@@ -10,11 +10,11 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from livesettings import config_value, config_choice_values, SettingNotSet
+from livesettings import config_value
 import base64
-import config
 import keyedcache
 import logging
+import operator
 
 log = logging.getLogger('bursar.models')
 
@@ -44,7 +44,7 @@ class PaymentBase(models.Model):
         if not self.pk:
             self.time_stamp = datetime.datetime.now()
 
-        super(OrderPaymentBase, self).save(force_insert=force_insert, force_update=force_update)
+        super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
 
     class Meta:
         abstract = True
@@ -54,10 +54,10 @@ class PaymentBase(models.Model):
 # --------------------
 
 class Authorization(PaymentBase):
-	"""
-	An AUTH received from a credit card gateway.
-	"""
-	purchase = models.ForeignKey(Purchase, related_name="authorizations")
+    """
+    An AUTH received from a credit card gateway.
+    """
+    purchase = models.ForeignKey('Purchase', related_name="authorizations")
     capture = models.ForeignKey('Payment', related_name="authorizations")
     complete = models.BooleanField(_('Complete'), default=False)
 
@@ -78,28 +78,26 @@ class Authorization(PaymentBase):
         if remaining > self.amount:
             remaining = self.amount
             
-        return trunc_decimal(remaining, 2)
-
     def save(self, force_insert=False, force_update=False):
         # create linked payment
         try:
             capture = self.capture
-        except OrderPayment.DoesNotExist:
+        except Payment.DoesNotExist:
             log.debug('Payment Authorization - creating linked payment')
             log.debug('order is: %s', self.order)
-            self.capture = OrderPayment.objects.create_linked(self)
-        super(OrderPaymentBase, self).save(force_insert=force_insert, force_update=force_update)
+            self.capture = Payment.objects.create_linked(self)
+        super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
 
     class Meta:
         verbose_name = _("Order Payment Authorization")
         verbose_name_plural = _("Order Payment Authorizations")
-			
+            
 class CreditCardDetail(models.Model):
     """
     Stores an encrypted CC number, its information, and its
     displayable number.
     """
-	payment = models.ForeignKey('Payment')
+    payment = models.ForeignKey('Payment')
     credit_type = CreditChoiceCharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
         max_length=4, )
@@ -114,8 +112,8 @@ class CreditCardDetail(models.Model):
     
     def storeCC(self, ccnum):
         """
-		Take as input a valid cc, encrypt it and store the last 4 digits in a visible form
-		"""
+        Take as input a valid cc, encrypt it and store the last 4 digits in a visible form
+        """
         self.display_cc = ccnum[-4:]
         encrypted_cc = _encrypt_code(ccnum)
         if config_value('GATEWAY', 'STORE_CREDIT_NUMBERS'):
@@ -128,15 +126,15 @@ class CreditCardDetail(models.Model):
     
     def setCCV(self, ccv):
         """
-		Put the CCV in the cache, don't save it for security/legal reasons.
-		"""
+        Put the CCV in the cache, don't save it for security/legal reasons.
+        """
         if not self.encrypted_cc:
             raise ValueError('CreditCardDetail expecting a credit card number to be stored before storing CCV')
             
         keyedcache.cache_set(self.encrypted_cc, skiplog=True, length=60*60, value=ccv)
     
     def getCCV(self):
-		"""Get the CCV from cache"""
+        """Get the CCV from cache"""
         try:
             ccv = keyedcache.cache_get(self.encrypted_cc)
         except keyedcache.NotCachedError:
@@ -180,11 +178,11 @@ class PaymentManager(models.Manager):
         return linked
 
 class Payment(PaymentBase):
-	"""
-	A payment attempt on a purchase.
-	"""
+    """
+    A payment attempt on a purchase.
+    """
     purchase = models.ForeignKey('Purchase', related_name="payments")
-    objects = OrderPaymentManager()
+    objects = PaymentManager()
 
     def __unicode__(self):
         if self.id is not None:
@@ -198,15 +196,15 @@ class Payment(PaymentBase):
 
 
 class PaymentFailure(PaymentBase):
-	"""
-	Details of a failure during a payment attempt
-	"""
-	purchase = models.ForeignKey('Purchase', null=True, blank=True, related_name='paymentfailures')
+    """
+    Details of a failure during a payment attempt
+    """
+    purchase = models.ForeignKey('Purchase', null=True, blank=True, related_name='paymentfailures')
 
 class PaymentPending(models.Model):
-	"""
-	Associates a payment with an Authorization.
-	"""
+    """
+    Associates a payment with an Authorization.
+    """
     purchase = models.ForeignKey('Purchase', related_name="pendingpayments")
     capture = models.ForeignKey(Payment, related_name="pendingpayments")
     
@@ -231,15 +229,15 @@ class PaymentPending(models.Model):
 
 
 class PurchaseManager(models.Manager):
-	pass
+    pass
 
 class Purchase(models.Model):
-	"""
-	Collects information about an order and tracks
-	its state.
-	"""
+    """
+    Collects information about an order and tracks
+    its state.
+    """
     method = models.CharField(_("Order method"), max_length=50, blank=True)
-	first_name = models.CharField(_("First name"), max_length=30)
+    first_name = models.CharField(_("First name"), max_length=30)
     last_name = models.CharField(_("Last name"), max_length=30)
     email = models.EmailField(_("Email"), blank=True, max_length=75)
     phone = models.CharField(_("Phone Number"), blank=True, max_length=30)
@@ -257,13 +255,13 @@ class Purchase(models.Model):
     bill_state = models.CharField(_("State"), max_length=50, blank=True)
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
     bill_country = models.CharField(_("Country"), max_length=2, blank=True)
-	subtotal = CurrencyField(_("Subtotal"), 
-		max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
+    subtotal = CurrencyField(_("Subtotal"), 
+        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     shipping_cost = CurrencyField(_("Shipping Cost"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
-	total = CurrencyField(_("Total"),
+    total = CurrencyField(_("Total"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     time_stamp = models.DateTimeField(_("Timestamp"), blank=True, null=True)
 
@@ -273,12 +271,12 @@ class Purchase(models.Model):
         return "Purchase #%s: %s" % (self.id, self.contact.full_name)
 
 class LineItem(models.Model):
-	"""A single line item in a purchase.  This is optional, only needed for certain
-	gateways such as Google or PayPal."""
-	purchase = models.ForeignKey(Purchase, verbose_name=_("Purchase"))
-	ordering = models.PositiveIntegerField(_('Ordering'))
+    """A single line item in a purchase.  This is optional, only needed for certain
+    gateways such as Google or PayPal."""
+    purchase = models.ForeignKey(Purchase, verbose_name=_("Purchase"))
+    ordering = models.PositiveIntegerField(_('Ordering'))
     name = models.CharField(_('Item'), max_length=100)
-	description = models.TextField(_'Description')
+    description = models.TextField(_('Description'))
     quantity = models.DecimalField(_("Quantity"),  max_digits=18,  decimal_places=6)
     unit_price = CurrencyField(_("Unit price"),
         max_digits=18, decimal_places=10)
@@ -288,11 +286,11 @@ class LineItem(models.Model):
         max_digits=18, decimal_places=10, blank=True, null=True)
     tax = CurrencyField(_("Line item tax"), default=Decimal('0.00'),
         max_digits=18, decimal_places=10)
-	total = CurrencyField(_("Total"), default=Decimal('0.00'),
-	    max_digits=18, decimal_places=2)
-	
-	class Meta:
-		ordering = ('ordering',)
+    total = CurrencyField(_("Total"), default=Decimal('0.00'),
+        max_digits=18, decimal_places=2)
+    
+    class Meta:
+        ordering = ('ordering',)
 
 # --------------------
 # Helper methods

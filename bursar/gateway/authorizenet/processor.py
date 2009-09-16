@@ -5,7 +5,7 @@ from django.template import loader, Context
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
 from satchmo_store.shop.models import Config
-from satchmo_utils.numbers import trunc_decimal
+from bursar.numbers import trunc_decimal
 from tax.utils import get_tax_processor
 from xml.dom import minidom
 import random

@@ -1,6 +1,6 @@
 from django.template import Context, loader
 from bursar.modules.base import BasePaymentProcessor, ProcessorResult, NOTSET
-from satchmo_utils.numbers import trunc_decimal
+from bursar.numbers import trunc_decimal
 from django.utils.translation import ugettext_lazy as _
 
 import urllib2
