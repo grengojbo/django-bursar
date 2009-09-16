@@ -19,23 +19,6 @@ import keyedcache
 import logging
 
 log = logging.getLogger('bursar.models')
-        
-class PaymentOption(models.Model):
-    """
-    If there are multiple options - CC, Cash, COD, etc this class allows
-    configuration.
-    """
-    description = models.CharField(_("Description"), max_length=20)
-    active = models.BooleanField(_("Active"), 
-        help_text=_("Should this be displayed as an option for the user?"))
-    optionName = PaymentChoiceCharField(_("Option Name"), max_length=20, 
-        unique=True, 
-        help_text=_("The class name as defined in payment.py"))
-    sortOrder = models.IntegerField(_("Sort Order"))
-    
-    class Meta:
-        verbose_name = _("Payment Option")
-        verbose_name_plural = _("Payment Options")
 
 class CreditCardDetail(models.Model):
     """
@@ -106,6 +89,23 @@ class CreditCardDetail(models.Model):
     class Meta:
         verbose_name = _("Credit Card")
         verbose_name_plural = _("Credit Cards")
+
+class PaymentOption(models.Model):
+    """
+    If there are multiple options - CC, Cash, COD, etc this class allows
+    configuration.
+    """
+    description = models.CharField(_("Description"), max_length=20)
+    active = models.BooleanField(_("Active"), 
+        help_text=_("Should this be displayed as an option for the user?"))
+    optionName = PaymentChoiceCharField(_("Option Name"), max_length=20, 
+        unique=True, 
+        help_text=_("The class name as defined in payment.py"))
+    sortOrder = models.IntegerField(_("Sort Order"))
+
+    class Meta:
+        verbose_name = _("Payment Option")
+        verbose_name_plural = _("Payment Options")
 
 def _decrypt_code(code):
     """Decrypt code encrypted by _encrypt_code"""
