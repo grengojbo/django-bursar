@@ -1,5 +1,6 @@
+from bursar import signals
 from bursar.fields import CurrencyField
-from bursar.models import Authorization, Payment, PaymentFailure, PaymentPending
+from bursar.models import Authorization, Payment, PaymentFailure, PaymentPending, Purchase
 from datetime import datetime
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
@@ -101,6 +102,7 @@ class BasePaymentProcessor(object):
             self.log.info("(Extra logging) " + msg, *args)
 
     def prepare_data(self, purchase):
+        assert(type(purchase) is Purchase)
         self.purchase = purchase
 
     def process(self, testing=False):
@@ -192,14 +194,14 @@ class PaymentRecorder(object):
 
     def _get_amount(self):
         if self._amount == NOTSET:
-            return self.purchase.balance
+            return self.purchase.total
         else:
             return self._amount
 
     amount = property(fset=_set_amount, fget=_get_amount)
 
     def _get_pending(self):
-        self.paymentspending = self.purchase.paymentspending.filter(payment__exact=self.key)
+        self.paymentspending = self.purchase.paymentspending.filter(method__exact=self.key)
         if self.paymentspending.count() > 0:
             self.pending = self.paymentspending[0]
             log.debug("Found pending payment: %s", self.pending)
@@ -278,7 +280,7 @@ class PaymentRecorder(object):
             pending = self.pending
             self.payment.capture = pending.capture
             self.payment.purchase = pending.purchase
-            self.payment.payment = pending.payment
+            self.payment.method = pending.method
             self.payment.details = pending.details
 
             # delete any extra pending payments
@@ -295,21 +297,8 @@ class PaymentRecorder(object):
         self.payment.save()
 
         purchase = self.payment.purchase
-
-        # TODO: move this to Satchmo
-        # if order.paid_in_full:
-        #     def _latest_status(order):
-        #             try:
-        #                 curr_status = order.orderstatus_set.latest()
-        #                 return curr_status.status
-        #             except OrderStatus.DoesNotExist:
-        #                 return ''
-        # 
-        #     if _latest_status(order) in ('', 'New'):
-        #         order.order_success()
-        #         # order_success listeners or product methods could have modified the status. reload it.
-        #         if _latest_status(order) == '':
-        #             order.add_status('New')
+        
+        signals.payment_complete.send(sender='bursar', purchase=self.purchase, payment=self.payment)
                 
     def create_pending(self, amount=NOTSET):
         """Create a placeholder payment entry for the purchase.  
@@ -331,15 +320,15 @@ class PaymentRecorder(object):
         
         log.debug("Creating pending %s payment of %s for %s", self.key, amount, self.purchase)
 
-        self.pending = PaymentPending.objects.create(purchase=self.purchase, amount=amount, payment=self.key)
+        self.pending = PaymentPending.objects.create(purchase=self.purchase, amount=amount, method=self.key)
         return self.pending
 
     def set_amount_from_pending(self):
         """Try to figure out how much to charge. If it is set on the "pending" charge use that
-        otherwise use the purchase balance."""
+        otherwise use the purchase total."""
         amount = self.pending.amount
                 
-        # otherwise use the purchase balance.
+        # otherwise use the purchase total.
         if amount == Decimal('0.00'):
             amount = self.purchase.total
                     

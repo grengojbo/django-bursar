@@ -68,7 +68,7 @@ def confirm_info(request):
     default_view_tax = config_value('TAX', 'DEFAULT_VIEW_TAX') 
   
     recurring = None
-    order_items = order.orderitem_set.all()
+    order_items = order.orderitems.all()
     for item in order_items:
         if item.product.is_subscription:
             recurring = {'product':item.product, 'price':item.product.price_set.all()[0].price.quantize(Decimal('.01')),}
@@ -152,7 +152,7 @@ def ipn(request):
                 order.save()
                 log.debug("Saved order notes from Paypal")
             
-            for item in order.orderitem_set.filter(product__subscriptionproduct__recurring=True, completed=False):
+            for item in order.orderitems.filter(product__subscriptionproduct__recurring=True, completed=False):
                 item.completed = True
                 item.save()
             for cart in Cart.objects.filter(customer=order.contact):

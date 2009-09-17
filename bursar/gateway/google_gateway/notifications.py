@@ -57,7 +57,7 @@ def do_charged(request, data):
     order = find_order(data)
     
     # Added to track total sold for each product
-    for item in order.orderitem_set.all():
+    for item in order.orderitems.all():
         product = item.product
         product.total_sold += item.quantity
         product.items_in_stock -= item.quantity

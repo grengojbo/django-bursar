@@ -23,7 +23,7 @@ log = logging.getLogger('bursar.models')
 # ----------------------
 
 class PaymentBase(models.Model):
-    payment = PaymentChoiceCharField(_("Payment Method"),
+    method = PaymentChoiceCharField(_("Payment Method"),
         max_length=25, blank=True)
     amount = CurrencyField(_("amount"), 
         max_digits=18, decimal_places=2, blank=True, null=True)
@@ -97,7 +97,7 @@ class CreditCardDetail(models.Model):
     Stores an encrypted CC number, its information, and its
     displayable number.
     """
-    payment = models.ForeignKey('Payment')
+    payment = models.ForeignKey('Payment', related_name="creditcards")
     credit_type = CreditChoiceCharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
         max_length=4, )
@@ -169,7 +169,7 @@ class PaymentManager(models.Manager):
     def create_linked(self, other):
         linked = Payment(
                 purchase = other.purchase,
-                payment = other.payment,
+                method = other.method,
                 amount=Decimal('0.00'),
                 transaction_id="LINKED",
                 details=other.details,
@@ -201,7 +201,7 @@ class PaymentFailure(PaymentBase):
     """
     purchase = models.ForeignKey('Purchase', null=True, blank=True, related_name='paymentfailures')
 
-class PaymentPending(models.Model):
+class PaymentPending(PaymentBase):
     """
     Associates a payment with an Authorization.
     """
@@ -239,21 +239,21 @@ class Purchase(models.Model):
     orderno = models.CharField(_("Order Number"), max_length=20)
     first_name = models.CharField(_("First name"), max_length=30)
     last_name = models.CharField(_("Last name"), max_length=30)
-    email = models.EmailField(_("Email"), blank=True, max_length=75)
-    phone = models.CharField(_("Phone Number"), blank=True, max_length=30)
-    ship_street1 = models.CharField(_("Street"), max_length=80, blank=True)
-    ship_street2 = models.CharField(_("Street"), max_length=80, blank=True)
-    ship_city = models.CharField(_("City"), max_length=50, blank=True)
-    ship_state = models.CharField(_("State"), max_length=50, blank=True)
-    ship_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
-    ship_country = models.CharField(_("Country"), max_length=2, blank=True)
-    bill_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
-    bill_street1 = models.CharField(_("Street"), max_length=80, blank=True)
-    bill_street2 = models.CharField(_("Street"), max_length=80, blank=True)
-    bill_city = models.CharField(_("City"), max_length=50, blank=True)
-    bill_state = models.CharField(_("State"), max_length=50, blank=True)
-    bill_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
-    bill_country = models.CharField(_("Country"), max_length=2, blank=True)
+    email = models.EmailField(_("Email"), max_length=75, default="")
+    phone = models.CharField(_("Phone Number"), max_length=30, default="")
+    ship_street1 = models.CharField(_("Street"), max_length=80, default="")
+    ship_street2 = models.CharField(_("Street"), max_length=80, default="")
+    ship_city = models.CharField(_("City"), max_length=50, default="")
+    ship_state = models.CharField(_("State"), max_length=50, default="")
+    ship_postal_code = models.CharField(_("Zip Code"), max_length=30, default="")
+    ship_country = models.CharField(_("Country"), max_length=2, default="")
+    bill_addressee = models.CharField(_("Addressee"), max_length=61, default="")
+    bill_street1 = models.CharField(_("Street"), max_length=80, default="")
+    bill_street2 = models.CharField(_("Street"), max_length=80, default="")
+    bill_city = models.CharField(_("City"), max_length=50, default="")
+    bill_state = models.CharField(_("State"), max_length=50, default="")
+    bill_postal_code = models.CharField(_("Zip Code"), max_length=30, default="")
+    bill_country = models.CharField(_("Country"), max_length=2, default="")
     sub_total = CurrencyField(_("Subtotal"), 
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
@@ -261,7 +261,7 @@ class Purchase(models.Model):
     shipping_cost = CurrencyField(_("Shipping Cost"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     total = CurrencyField(_("Total"),
-        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
+        max_digits=18, decimal_places=2, display_decimal=4)
     time_stamp = models.DateTimeField(_("Timestamp"), blank=True, null=True)
 
     objects = PurchaseManager()
@@ -280,6 +280,15 @@ class Purchase(models.Model):
 
         return amount
         
+    @property
+    def credit_card(self):
+        """Return the credit card associated with this payment.
+        """
+        for payment in self.payments.order_by('-time_stamp'):
+            if payment.creditcards.count() > 0:
+                return payment.creditcards.get()
+        return None
+
     def recurring_lineitems(self):
         """Get all recurring lineitems"""
         subscriptions = [item for item in self.lineitems.all() if item.is_recurring]
@@ -297,7 +306,7 @@ class Purchase(models.Model):
     @property
     def total_payments(self):
         """Returns the total value of all completed payments"""
-        payments = [p.amount for p in self.authorizations.filter(complete=False)]
+        payments = [p.amount for p in self.payments.all()]
         if payments:
             amount = reduce(operator.add, payments)
         else:
