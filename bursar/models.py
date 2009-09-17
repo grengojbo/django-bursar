@@ -42,7 +42,7 @@ class PaymentBase(models.Model):
 
     def save(self, force_insert=False, force_update=False):
         if not self.pk:
-            self.time_stamp = datetime.datetime.now()
+            self.time_stamp = datetime.now()
 
         super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
 
@@ -205,8 +205,8 @@ class PaymentPending(models.Model):
     """
     Associates a payment with an Authorization.
     """
-    purchase = models.ForeignKey('Purchase', related_name="pendingpayments")
-    capture = models.ForeignKey(Payment, related_name="pendingpayments")
+    purchase = models.ForeignKey('Purchase', related_name="paymentspending")
+    capture = models.ForeignKey(Payment, related_name="paymentspending")
     
     def __unicode__(self):
         if self.id is not None:
@@ -237,12 +237,10 @@ class Purchase(models.Model):
     its state.
     """
     orderno = models.CharField(_("Order Number"), max_length=20)
-    method = models.CharField(_("Order method"), max_length=50, blank=True)
     first_name = models.CharField(_("First name"), max_length=30)
     last_name = models.CharField(_("Last name"), max_length=30)
     email = models.EmailField(_("Email"), blank=True, max_length=75)
     phone = models.CharField(_("Phone Number"), blank=True, max_length=30)
-    ship_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
     ship_street1 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_street2 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_city = models.CharField(_("City"), max_length=50, blank=True)
@@ -256,7 +254,7 @@ class Purchase(models.Model):
     bill_state = models.CharField(_("State"), max_length=50, blank=True)
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
     bill_country = models.CharField(_("Country"), max_length=2, blank=True)
-    subtotal = CurrencyField(_("Subtotal"), 
+    sub_total = CurrencyField(_("Subtotal"), 
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
@@ -269,7 +267,7 @@ class Purchase(models.Model):
     objects = PurchaseManager()
 
     def __unicode__(self):
-        return "Purchase #%s: %s" % (self.id, self.contact.full_name)
+        return "Purchase #%s on Order #%s" % (self.id, self.orderno)
 
     @property
     def authorized_remaining(self):
@@ -282,6 +280,20 @@ class Purchase(models.Model):
 
         return amount
         
+    def recurring_lineitems(self):
+        """Get all recurring lineitems"""
+        subscriptions = [item for item in self.lineitems.all() if item.is_recurring]
+        return subscriptions
+    
+    def save(self, **kwargs):
+        """
+        Copy addresses from contact. If the order has just been created, set
+        the create_date.
+        """
+        if not self.pk:
+            self.time_stamp = datetime.now()
+        super(Purchase, self).save(**kwargs)
+        
     @property
     def total_payments(self):
         """Returns the total value of all completed payments"""
@@ -292,28 +304,85 @@ class Purchase(models.Model):
             amount = Decimal('0.00')
             
         return amount
+
+        
         
 class LineItem(models.Model):
     """A single line item in a purchase.  This is optional, only needed for certain
     gateways such as Google or PayPal."""
-    purchase = models.ForeignKey(Purchase, verbose_name=_("Purchase"))
-    ordering = models.PositiveIntegerField(_('Ordering'))
+    purchase = models.ForeignKey(Purchase, 
+        verbose_name=_("Purchase"), related_name="lineitems")
+    ordering = models.PositiveIntegerField(_('Ordering'),
+        default=0)
     name = models.CharField(_('Item'), max_length=100)
-    description = models.TextField(_('Description'))
-    quantity = models.DecimalField(_("Quantity"),  max_digits=18,  decimal_places=6)
+    description = models.TextField(_('Description'), 
+        blank=True)
+    quantity = models.DecimalField(_("Quantity"),  
+        max_digits=18, decimal_places=6,
+        default=Decimal('1'))
     unit_price = CurrencyField(_("Unit price"),
         max_digits=18, decimal_places=10)
     subtotal = CurrencyField(_("Line item price"),
         max_digits=18, decimal_places=10)
+    shipping_price = CurrencyField(_("Shipping price"),
+        max_digits=18, decimal_places=10, 
+        default=Decimal('0.00'))
     discount = CurrencyField(_("Line item discount"),
-        max_digits=18, decimal_places=10, blank=True, null=True)
-    tax = CurrencyField(_("Line item tax"), default=Decimal('0.00'),
-        max_digits=18, decimal_places=10)
-    total = CurrencyField(_("Total"), default=Decimal('0.00'),
-        max_digits=18, decimal_places=2)
+        max_digits=18, decimal_places=10,
+        default=Decimal('0.00'))
+    tax = CurrencyField(_("Line item tax"),
+        max_digits=18, decimal_places=10,
+        default=Decimal('0.00'))
+    total = CurrencyField(_("Total"),
+        max_digits=18, decimal_places=2,
+        default=Decimal('0.00'))
     
     class Meta:
         ordering = ('ordering',)
+        
+    @property
+    def is_recurring(self):
+        recur = False
+        try:
+            if self.recurdetails and self.recurdetails is not None:
+                recur = True
+        except RecurringLineItem.DoesNotExist:
+            pass
+        
+        return recur
+        
+    def recalc(self):
+        """Recalculate totals"""
+        self.subtotal = self.quantity * self.unit_price
+        self.total = self.subtotal - self.discount + self.tax + self.shipping_price
+                
+    def __unicode__(self):
+        return "LineItem: %s - %d" % (self.name, self.total) 
+
+class RecurringLineItem(models.Model):
+    """Extra information needed for a recurring line item, such as a subscription"""
+    lineitem = models.OneToOneField(LineItem, verbose_name=_("Line Item"), 
+        primary_key=True, related_name="recurdetails")
+    recurring = models.BooleanField(_("Recurring Billing"), 
+        help_text=_("Customer will be charged the regular product price on a periodic basis."), 
+        default=False)
+    recurring_times = models.IntegerField(_("Recurring Times"), 
+        help_text=_("Number of payments which will occur at the regular rate.  (optional)"), 
+        null=True, blank=True)
+    expire_length = models.IntegerField(_("Duration"), 
+        help_text=_("Length of each billing cycle"), 
+        null=True, blank=True)
+    SUBSCRIPTION_UNITS = (
+        ('DAY', _('Days')),
+        ('MONTH', _('Months'))
+    )
+    expire_unit = models.CharField(_("Expire Unit"), max_length=5, 
+        choices=SUBSCRIPTION_UNITS, default="DAY", null=False)
+    SHIPPING_CHOICES = (
+        ('0', _('No Shipping Charges')),
+        ('1', _('Pay Shipping Once')),
+        ('2', _('Pay Shipping Each Billing Cycle')),
+    )
 
 # --------------------
 # Helper methods

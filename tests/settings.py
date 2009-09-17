@@ -128,7 +128,7 @@ INSTALLED_APPS = (
     #'typogrify',
     #'debug_toolbar',
     'app_plugins',
-    'test.localsite',
+    'tests.localsite',
 )
 
 AUTHENTICATION_BACKENDS = (

@@ -38,10 +38,10 @@ class TestGateway(TestCase):
         processor = utils.get_processor_by_key('PAYMENT_DUMMY')
         processor.create_pending_payment(order=order, amount=order.total)
 
-        self.assertEqual(order.pendingpayments.count(), 1)
+        self.assertEqual(order.paymentspending.count(), 1)
         self.assertEqual(order.purchases.count(), 1)
 
-        pending = order.pendingpayments.all()[0]
+        pending = order.paymentspending.all()[0]
         self.assertEqual(pending.amount, order.total)
 
         payment = order.purchases.all()[0]
@@ -77,10 +77,10 @@ class TestGateway(TestCase):
         processor = utils.get_processor_by_key('PAYMENT_DUMMY')
         processor.create_pending_payment(order=order, amount=Decimal('25.00'))
 
-        self.assertEqual(order.pendingpayments.count(), 1)
+        self.assertEqual(order.paymentspending.count(), 1)
         self.assertEqual(order.purchases.count(), 1)
 
-        pending = order.pendingpayments.all()[0]
+        pending = order.paymentspending.all()[0]
 
         self.assertEqual(pending.amount, Decimal('25.00'))
         processor.prepare_data(order)
@@ -139,5 +139,5 @@ class TestGateway(TestCase):
         pend1 = processor.create_pending_payment(order=order, amount=order.total)
         pend2 = processor.create_pending_payment(order=order, amount=order.total)
 
-        self.assertEqual(order.pendingpayments.count(), 1)
+        self.assertEqual(order.paymentspending.count(), 1)
         self.assertEqual(order.purchases.count(), 1)
