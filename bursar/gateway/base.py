@@ -69,7 +69,7 @@ class BasePaymentProcessor(object):
         if self.can_authorize():
             if not purchase:
                 purchase = self.purchase
-            auths = purchase.authorizations.filter(payment__exact=self.key, complete=False)
+            auths = purchase.authorizations.filter(method__exact=self.key, complete=False)
             self.log_extra('Capturing %i %s authorizations for purchase on order #%i', auths.count(), self.key, purchase.orderno)
             self.prepare_data(purchase)
             for auth in auths:
@@ -100,6 +100,14 @@ class BasePaymentProcessor(object):
         """Send a log message if EXTRA_LOGGING is set in settings."""
         if self.settings.EXTRA_LOGGING.value:
             self.log.info("(Extra logging) " + msg, *args)
+            
+    def pending_amount(self, purchase):
+        try:
+            pending = purchase.get_pending(self.key)
+            amount = pending.amount
+        except PaymentPending.DoesNotExist:
+            amount = purchase.total
+        return amount
 
     def prepare_data(self, purchase):
         assert(type(purchase) is Purchase)
@@ -199,19 +207,13 @@ class PaymentRecorder(object):
             return self._amount
 
     amount = property(fset=_set_amount, fget=_get_amount)
-
-    def _get_pending(self):
-        self.paymentspending = self.purchase.paymentspending.filter(method__exact=self.key)
-        if self.paymentspending.count() > 0:
-            self.pending = self.paymentspending[0]
-            log.debug("Found pending payment: %s", self.pending)
             
     def authorize_payment(self, amount=NOTSET):
         """Make an authorization, using the existing pending payment if found"""
         self.amount = amount
         log.debug("Recording %s authorization of %s for %s", self.key, self.amount, self.purchase)
         
-        self._get_pending()
+        self.pending = self.purchase.get_pending(self.key)
 
         if self.pending:
             self.payment = Authorization()
@@ -242,7 +244,7 @@ class PaymentRecorder(object):
         """Make a direct payment without a prior authorization, using the existing pending payment if found."""
         self.amount = amount
 
-        self._get_pending()
+        self.pending = self.purchase.get_pending(self.key)
         
         if self.pending:
             self.payment = self.pending.capture
@@ -284,7 +286,7 @@ class PaymentRecorder(object):
             self.payment.details = pending.details
 
             # delete any extra pending payments
-            for p in self.paymentspending:
+            for p in self.purchase.paymentspending.all():
                 if p != pending and p.capture.transaction_id=='LINKED':
                     p.capture.delete()
                 p.delete()
@@ -308,12 +310,12 @@ class PaymentRecorder(object):
             
         self.amount = amount
 
-        self._get_pending()
-        ct = self.paymentspending.count()
+        pendings = self.purchase.paymentspending
+        ct = pendings.count()
         if ct > 0:
             log.debug("Deleting %i expired pending payment entries for order #%i", ct, self.purchase.orderno)
 
-            for pending in self.paymentspending:
+            for pending in pendings.all():
                 if pending.capture.transaction_id=='LINKED':
                     pending.capture.delete()
                 pending.delete()

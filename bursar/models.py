@@ -288,6 +288,13 @@ class Purchase(models.Model):
             if payment.creditcards.count() > 0:
                 return payment.creditcards.get()
         return None
+        
+    def get_pending(self, method):
+        pending = self.paymentspending.filter(method__exact=method)
+        if pending.count() > 0:
+            return pending[0]
+        else:
+            raise PaymentPending.DoesNotExist(method)
 
     def recurring_lineitems(self):
         """Get all recurring lineitems"""

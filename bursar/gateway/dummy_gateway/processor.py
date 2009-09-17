@@ -22,7 +22,7 @@ class PaymentProcessor(BasePaymentProcessor):
             purchase = self.purchase
             
         if amount == NOTSET:
-            amount = purchase.total
+            amount = self.pending_amount(purchase)
         
         cc = purchase.credit_card
         if cc:
