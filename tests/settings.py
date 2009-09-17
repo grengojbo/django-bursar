@@ -112,7 +112,7 @@ INSTALLED_APPS = (
     #'satchmo_ext.product_feeds',
     #'satchmo_ext.brand',
     'bursar',
-    'bursar.gateway.dummy',
+    'bursar.gateway.dummy_gateway',
     'payment',
     'payment.modules.dummy',
     #'payment.modules.purchaseorder',
