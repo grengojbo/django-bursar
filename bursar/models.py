@@ -74,7 +74,7 @@ class Authorization(PaymentBase):
         else:
             amount = Decimal('0.00')
         
-        remaining = self.order.total - amount
+        remaining = self.purchase.total - amount
         if remaining > self.amount:
             remaining = self.amount
             
@@ -83,8 +83,7 @@ class Authorization(PaymentBase):
         try:
             capture = self.capture
         except Payment.DoesNotExist:
-            log.debug('Payment Authorization - creating linked payment')
-            log.debug('order is: %s', self.order)
+            log.debug('Payment Authorization - creating linked payment for %s', self.purchase)
             self.capture = Payment.objects.create_linked(self)
         super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
 
@@ -221,6 +220,7 @@ class PaymentPending(PaymentBase):
         except Payment.DoesNotExist:
             log.debug('Pending Payment - creating linked payment')
             self.capture = Payment.objects.create_linked(self)
+            
         super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
 
     class Meta:
@@ -288,12 +288,13 @@ class Purchase(models.Model):
                 return payment.creditcards.get()
         return None
         
-    def get_pending(self, method):
+    def get_pending(self, method, raises=True):
         pending = self.paymentspending.filter(method__exact=method)
         if pending.count() > 0:
             return pending[0]
-        else:
+        elif raises:
             raise PaymentPending.DoesNotExist(method)
+        return None
             
     def recalc(self):
         if self.lineitems.count() > 0:
@@ -317,6 +318,11 @@ class Purchase(models.Model):
         """Get all recurring lineitems"""
         subscriptions = [item for item in self.lineitems.all() if item.is_recurring]
         return subscriptions
+    
+    @property
+    def remaining(self):
+        """Return the total less the payments and auths"""
+        return self.total - self.total_payments - self.authorized_remaining
     
     def save(self, **kwargs):
         """

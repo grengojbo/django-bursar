@@ -10,7 +10,7 @@ from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 
 class PaymentProcessor(BasePaymentProcessor):
 
-    def __init__(self, settings):
+    def __init__(self, settings={}):
         default_settings = {
             'SSL': False,
             'LIVE': False,
@@ -27,9 +27,7 @@ class PaymentProcessor(BasePaymentProcessor):
         Make an authorization for an purchase.  This payment will then be captured when the purchase
         is set marked 'shipped'.
         """
-        if purchase == None:
-            purchase = self.purchase
-            
+        assert(purchase)
         if amount == NOTSET:
             amount = self.pending_amount(purchase)
         
@@ -49,13 +47,13 @@ class PaymentProcessor(BasePaymentProcessor):
                         reason_code='2', details='Credit card number error forced')                
                     return ProcessorResult(self.key, False, _('Bad credit card number - order declined'), payment)
 
-        orderauth = self.record_authorization(amount=amount, reason_code="0")
+        orderauth = self.record_authorization(amount=amount, reason_code="0", purchase=purchase)
         return ProcessorResult(self.key, True, _('Success'), orderauth)
 
     def can_authorize(self):
         return True
 
-    def capture_payment(self, testing=False, amount=NOTSET):
+    def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """
         Process the transaction and return a ProcessorResult:
 
@@ -71,19 +69,20 @@ class PaymentProcessor(BasePaymentProcessor):
         ProcessorResult: DUMMY [Success] Success
         """
         
-        payment = self.record_payment(amount=amount, reason_code="0")
+        payment = self.record_payment(amount=amount, reason_code="0", purchase=purchase)
         return ProcessorResult(self.key, True, _('Success'), payment)
 
 
-    def capture_authorized_payment(self, authorization, amount=NOTSET):
+    def capture_authorized_payment(self, authorization, amount=NOTSET, purchase=None):
         """
         Capture a prior authorization
         """
+        assert(purchase)
         if amount == NOTSET:
             amount = authorization.amount
-
+            
         payment = self.record_payment(amount=amount, reason_code="0", 
-            transaction_id="dummy", authorization=authorization)
+            transaction_id="dummy", authorization=authorization, purchase=purchase)
         
         return ProcessorResult(self.key, True, _('Success'), payment)
         
