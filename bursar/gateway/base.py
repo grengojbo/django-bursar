@@ -14,12 +14,12 @@ NOTSET = object()
 
 class BasePaymentProcessor(object):
 
-    def __init__(self, label, payment_module):
-        self.key = payment_module.KEY.value
-        self.settings = payment_module
-        self.label = label
-        self.log = logging.getLogger('payment.' + label)
+    def __init__(self, key, default_settings, settings):
+        self.key = key
+        default_settings.update(settings)
+        self.settings = default_settings
         self.purchase = None
+        self.log = logging.getLogger('payment.' + key)
 
     def allowed(self, user, amount):
         """Allows different payment processors to be allowed for certain situations."""
@@ -90,15 +90,15 @@ class BasePaymentProcessor(object):
     def create_pending_payment(self, purchase=None, amount=NOTSET):
         if not purchase:
             purchase = self.purchase
-        recorder = PaymentRecorder(purchase, self.settings)
+        recorder = PaymentRecorder(purchase, self.key)
         return recorder.create_pending(amount=amount)
 
     def is_live(self):
-        return self.settings.LIVE.value
+        return self.settings['LIVE']
 
     def log_extra(self, msg, *args):
         """Send a log message if EXTRA_LOGGING is set in settings."""
-        if self.settings.EXTRA_LOGGING.value:
+        if self.settings['EXTRA_LOGGING']:
             self.log.info("(Extra logging) " + msg, *args)
             
     def pending_amount(self, purchase):
@@ -115,7 +115,7 @@ class BasePaymentProcessor(object):
 
     def process(self, testing=False):
         """This will process the payment."""
-        if self.can_authorize() and not self.settings.CAPTURE.value:
+        if self.can_authorize() and not self.settings['CAPTURE']:
             self.log_extra('Authorizing payment on order #%i', self.purchase.orderno)
             return self.authorize_payment(testing=testing)
         else:
@@ -129,7 +129,7 @@ class BasePaymentProcessor(object):
         if not purchase:
             purchase = self.purchase
 
-        recorder = PaymentRecorder(purchase, self.settings)
+        recorder = PaymentRecorder(purchase, self.key)
         recorder.transaction_id = transaction_id
         recorder.reason_code = reason_code
         return recorder.authorize_payment(amount=amount)
@@ -143,7 +143,7 @@ class BasePaymentProcessor(object):
         if not purchase:
             purchase = self.purchase
 
-        recorder = PaymentRecorder(purchase, self.settings)
+        recorder = PaymentRecorder(purchase, self.key)
         recorder.transaction_id = transaction_id
         recorder.reason_code = reason_code
         recorder.record_failure(amount, details=details, authorization=authorization)
@@ -154,7 +154,7 @@ class BasePaymentProcessor(object):
         """
         if not purchase:
             purchase = self.purchase
-        recorder = PaymentRecorder(purchase, self.settings)
+        recorder = PaymentRecorder(purchase, self.key)
         recorder.transaction_id = transaction_id
         recorder.reason_code = reason_code
 
@@ -186,10 +186,9 @@ class HeadlessPaymentProcessor(BasePaymentProcessor):
 class PaymentRecorder(object):
     """Manages proper recording of pending payments, payments, and authorizations."""
     
-    def __init__(self, purchase, config):
+    def __init__(self, purchase, key):
         self.purchase = purchase
-        self.key = unicode(config.KEY.value)
-        self.config = config
+        self.key = key
         self._amount = NOTSET
         self.transaction_id = ""
         self.reason_code = ""

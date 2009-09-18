@@ -11,7 +11,16 @@ from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 class PaymentProcessor(BasePaymentProcessor):
 
     def __init__(self, settings):
-        super(PaymentProcessor, self).__init__('dummy', settings)
+        default_settings = {
+            'SSL': False,
+            'LIVE': False,
+            'LABEL': _('Payment test module'),
+            'CREDITCHOICES': ('Visa', 'Mastercard', 'Discover', 'American Express'),
+            'CAPTURE': True,
+            'AUTH_EARLY': False,
+            'EXTRA_LOGGING': False,
+        }
+        super(PaymentProcessor, self).__init__('dummy', default_settings, settings)
 
     def authorize_payment(self, purchase=None, testing=False, amount=NOTSET):
         """
@@ -54,7 +63,7 @@ class PaymentProcessor(BasePaymentProcessor):
         >>> from livesettings import config_get_group
         >>> settings = config_get_group('GATEWAY_DUMMY')
         >>> from bursar.gateway.dummy.processor import PaymentProcessor
-        >>> processor = PaymentProcessor(settings)
+        >>> processor = PaymentProcessor(settings.dict_values())
         # If using a normal payment gateway, data should be an Order object.
         >>> data = {}
         >>> processor.prepare_data(data)
