@@ -68,7 +68,7 @@ class PaymentProcessor(BasePaymentProcessor):
         >>> processor.process()
         ProcessorResult: DUMMY [Success] Success
         """
-        
+        assert(purchase)
         payment = self.record_payment(amount=amount, reason_code="0", purchase=purchase)
         return ProcessorResult(self.key, True, _('Success'), payment)
 
@@ -77,7 +77,8 @@ class PaymentProcessor(BasePaymentProcessor):
         """
         Capture a prior authorization
         """
-        assert(purchase)
+        if not purchase:
+            purchase = authorization.purchase
         if amount == NOTSET:
             amount = authorization.amount
             

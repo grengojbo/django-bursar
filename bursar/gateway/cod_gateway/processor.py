@@ -7,21 +7,27 @@ from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 class PaymentProcessor(BasePaymentProcessor):
     """COD Payment Processor"""
 
-    def __init__(self, settings):
-        super(PaymentProcessor, self).__init__('cod', settings)
+    def __init__(self, settings={}):
+        default_settings = {
+            'SSL': False,
+            'LIVE': False,
+            'LABEL': _('Payment COD Module'),
+            'CAPTURE': True,
+            'AUTH_EARLY': False,
+            'EXTRA_LOGGING': False,
+        }
+        super(PaymentProcessor, self).__init__('cod', default_settings, settings)
 
-    def capture_payment(self, testing=False, order=None, amount=NOTSET):
+    def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """
         COD is always successful.
         """
-        if not order:
-            order = self.order
-
+        assert(purchase)
         if amount == NOTSET:
-            amount = order.balance
+            amount = purchase.total
 
-        payment = self.record_payment(order=order, amount=amount, 
-            transaction_id="COD", reason_code='0')
+        payment = self.record_payment(amount=amount, 
+            transaction_id=self.key, reason_code='0', purchase=purchase)
 
         return ProcessorResult(self.key, True, _('Success'), payment)
 

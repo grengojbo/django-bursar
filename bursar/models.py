@@ -185,9 +185,9 @@ class Payment(PaymentBase):
 
     def __unicode__(self):
         if self.id is not None:
-            return u"Order Payment #%i" % self.id
+            return u"Payment #%i: amount=%s" % (self.id, self.amount)
         else:
-            return u"Order Payment (unsaved)"
+            return u"Payment (unsaved)"
 
     class Meta:
         verbose_name = _("Payment")
@@ -309,10 +309,16 @@ class Purchase(models.Model):
             zero = Decimal('0.00')
             if shipping > zero and self.shipping == zero:
                 self.shipping = shipping
+            if self.shipping == None:
+                self.shipping = zero
             if tax > zero and self.tax == zero:
                 self.tax = tax
-                
+            if self.tax == None:
+                self.tax = zero
+                                
         self.total = self.sub_total + self.tax + self.shipping
+        log.debug("Purchase #%s recalc: sub_total=%s, shipping=%s, tax=%s, total=%s", 
+            self.id, self.sub_total, self.shipping, self.tax, self.total)
 
     def recurring_lineitems(self):
         """Get all recurring lineitems"""

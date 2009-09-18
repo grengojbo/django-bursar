@@ -44,7 +44,7 @@ class BasePaymentProcessor(object):
     def authorize_payment(self, testing=False, purchase=None, amount=NOTSET):
         """Authorize a single payment, must be overridden to function"""
         self.log.warn('Module does not implement authorize_payment: %s', self.key)
-        return ProcessorResult(False, _("Not Implemented"))
+        return ProcessorResult(False, _("Not Implemented"), None, None)
 
     def can_authorize(self):
         return False
@@ -319,7 +319,8 @@ class PaymentRecorder(object):
         # otherwise use the purchase total.
         if amount == Decimal('0.00'):
             amount = self.purchase.total
-                    
+
+        log.debug('Settings amount from pending=%s', self.purchase.total)                    
         self.amount = amount
 
 class ProcessorResult(object):
