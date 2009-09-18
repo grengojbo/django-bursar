@@ -247,7 +247,6 @@ class Purchase(models.Model):
     ship_state = models.CharField(_("State"), max_length=50, default="")
     ship_postal_code = models.CharField(_("Zip Code"), max_length=30, default="")
     ship_country = models.CharField(_("Country"), max_length=2, default="")
-    bill_addressee = models.CharField(_("Addressee"), max_length=61, default="")
     bill_street1 = models.CharField(_("Street"), max_length=80, default="")
     bill_street2 = models.CharField(_("Street"), max_length=80, default="")
     bill_city = models.CharField(_("City"), max_length=50, default="")
@@ -258,7 +257,7 @@ class Purchase(models.Model):
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
-    shipping_cost = CurrencyField(_("Shipping Cost"),
+    shipping = CurrencyField(_("Shipping Cost"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     total = CurrencyField(_("Total"),
         max_digits=18, decimal_places=2, display_decimal=4)
@@ -295,6 +294,24 @@ class Purchase(models.Model):
             return pending[0]
         else:
             raise PaymentPending.DoesNotExist(method)
+            
+    def recalc(self):
+        if self.lineitems.count() > 0:
+            subtotal = Decimal('0.00')
+            shipping = Decimal('0.00')
+            tax = Decimal('0.00')
+            for item in self.lineitems.all():
+                subtotal += item.sub_total
+                shipping += item.shipping
+                tax += item.tax
+            self.sub_total = subtotal
+            zero = Decimal('0.00')
+            if shipping > zero and self.shipping == zero:
+                self.shipping = shipping
+            if tax > zero and self.tax == zero:
+                self.tax = tax
+                
+        self.total = self.sub_total + self.tax + self.shipping
 
     def recurring_lineitems(self):
         """Get all recurring lineitems"""
@@ -321,8 +338,7 @@ class Purchase(models.Model):
             
         return amount
 
-        
-        
+  
 class LineItem(models.Model):
     """A single line item in a purchase.  This is optional, only needed for certain
     gateways such as Google or PayPal."""
@@ -338,9 +354,9 @@ class LineItem(models.Model):
         default=Decimal('1'))
     unit_price = CurrencyField(_("Unit price"),
         max_digits=18, decimal_places=10)
-    subtotal = CurrencyField(_("Line item price"),
+    sub_total = CurrencyField(_("Line item price"),
         max_digits=18, decimal_places=10)
-    shipping_price = CurrencyField(_("Shipping price"),
+    shipping = CurrencyField(_("Shipping price"),
         max_digits=18, decimal_places=10, 
         default=Decimal('0.00'))
     discount = CurrencyField(_("Line item discount"),
@@ -369,8 +385,8 @@ class LineItem(models.Model):
         
     def recalc(self):
         """Recalculate totals"""
-        self.subtotal = self.quantity * self.unit_price
-        self.total = self.subtotal - self.discount + self.tax + self.shipping_price
+        self.sub_total = self.quantity * self.unit_price
+        self.total = self.sub_total - self.discount + self.tax + self.shipping
                 
     def __unicode__(self):
         return "LineItem: %s - %d" % (self.name, self.total) 
