@@ -1,5 +1,7 @@
 # -*- coding: UTF-8 -*-
+from bursar.gateway.dummy_gateway import processor
 from bursar.models import Authorization, Payment
+from bursar.tests import make_test_purchase
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -7,8 +9,6 @@ from django.core import urlresolvers
 from django.core.urlresolvers import reverse as url
 from django.test import TestCase
 from django.test.client import Client
-from bursar.tests import make_test_purchase
-from bursar.gateway.dummy_gateway import processor
 
 class TestGateway(TestCase):
     def setUp(self):
