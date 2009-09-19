@@ -108,7 +108,7 @@ class BasePaymentProcessor(object):
             self.log_extra('Authorizing payment on order #%i', purchase.orderno)
             return self.authorize_payment(testing=testing)
         else:
-            self.log_extra('Capturing payment on order #%i', purchase.orderno)
+            self.log_extra('Capturing payment on order #%s', purchase.orderno)
             return self.capture_payment(purchase=purchase, testing=testing)
             
     def record_authorization(self, amount=NOTSET, transaction_id="", reason_code="", purchase=None):
