@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_get_group
 
-config = config_get_group('GATEWAY_PAYPAL')
+config = config_get_group('PAYMENT_PAYPAL')
 
 urlpatterns = patterns('',
      (r'^$', 'payment.modules.paypal.views.pay_ship_info', {'SSL': config.SSL.value}, 'PAYPAL_satchmo_checkout-step2'),

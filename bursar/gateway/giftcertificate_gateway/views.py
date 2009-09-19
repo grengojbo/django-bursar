@@ -7,7 +7,7 @@ from forms import GiftCertCodeForm, GiftCertPayShipForm
 from models import GiftCertificate, GIFTCODE_KEY
 from livesettings import config_get_group
 from satchmo_store.shop.models import Order
-from bursar.utils import pay_ship_save, get_or_create_order
+from payment.utils import pay_ship_save, get_or_create_order
 from bursar.views import confirm, payship
 from satchmo_utils.dynamic import lookup_url
 from django.contrib.sites.models import Site
@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger("giftcertificate.views")
 
-gc = config_get_group('GATEWAY_GIFTCERTIFICATE')
+gc = config_get_group('PAYMENT_GIFTCERTIFICATE')
     
 def giftcert_pay_ship_process_form(request, contact, working_cart, payment_module):
     if request.method == "POST":

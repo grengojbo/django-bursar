@@ -13,11 +13,11 @@ log = logging.getLogger('protx.views')
     
 def pay_ship_info(request):
     return payship.credit_pay_ship_info(request, 
-            config_get_group('GATEWAY_PROTX'),
+            config_get_group('PAYMENT_PROTX'),
             template="shop/checkout/protx/pay_ship.html")
     
 def confirm_info(request, template='shop/checkout/protx/confirm.html', extra_context={}):
-    payment_module = config_get_group('GATEWAY_PROTX')
+    payment_module = config_get_group('PAYMENT_PROTX')
     controller = confirm.ConfirmController(request, payment_module)
     controller.templates['CONFIRM'] = template
     controller.extra_context = extra_context
@@ -30,7 +30,7 @@ def confirm_secure3d(request, secure3d_template='shop/checkout/secure3d_form.htm
     """Handles confirming an order and processing the charges when secured by secure3d.
  
     """
-    payment_module = config_get_group('GATEWAY_PROTX')
+    payment_module = config_get_group('PAYMENT_PROTX')
     controller = confirm.ConfirmController(request, payment_module, extra_context=extra_context)
     controller.template['CONFIRM'] = confirm_template
     if not controller.sanity_check():

@@ -16,7 +16,7 @@ from django.shortcuts import render_to_response
 from django.views.decorators.cache import never_cache
 from django.template import RequestContext
 from livesettings import config_get_group, config_value 
-from bursar.utils import get_processor_by_key
+from payment.utils import get_processor_by_key
 from bursar.views import payship
 from satchmo_store.shop.models import Order, Cart
 from satchmo_utils.dynamic import lookup_url, lookup_template
@@ -36,7 +36,7 @@ log = logging.getLogger()
 def pay_ship_info(request):
     return payship.base_pay_ship_info(
             request,
-            config_get_group('GATEWAY_SERMEPA'), payship.simple_pay_ship_process_form,
+            config_get_group('PAYMENT_SERMEPA'), payship.simple_pay_ship_process_form,
             'shop/checkout/sermepa/pay_ship.html'
             )
 pay_ship_info = never_cache(pay_ship_info)
@@ -50,7 +50,7 @@ def _resolve_local_url(payment_module, cfgval, ssl=False):
 
 
 def confirm_info(request):
-    payment_module = config_get_group('GATEWAY_SERMEPA')
+    payment_module = config_get_group('PAYMENT_SERMEPA')
 
     try:
         order = Order.objects.from_request(request)
@@ -137,7 +137,7 @@ def confirm_info(request):
 confirm_info = never_cache(confirm_info)
 
 def notify_callback(request):
-    payment_module = config_get_group('GATEWAY_SERMEPA')
+    payment_module = config_get_group('PAYMENT_SERMEPA')
     if payment_module.LIVE.value:
         log.debug("Live IPN on %s", payment_module.KEY.value)
         signature_code = payment_module.MERCHANT_SIGNATURE_CODE.value
@@ -189,7 +189,7 @@ def notify_callback(request):
         return HttpResponseBadRequest("Incomplete data")
     # success
     order.add_status(status='New', notes=u"Paid through SERMEPA.")
-    processor = get_processor_by_key('GATEWAY_SERMEPA')
+    processor = get_processor_by_key('PAYMENT_SERMEPA')
     payment = processor.record_payment(
         order=order, 
         amount=amount, 

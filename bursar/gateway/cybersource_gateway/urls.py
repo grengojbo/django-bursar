@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_value, config_get_group
 
-config = config_get_group('GATEWAY_CYBERSOURCE')
+config = config_get_group('PAYMENT_CYBERSOURCE')
 
 urlpatterns = patterns('',
      (r'^$', 'payment.modules.cybersource.views.pay_ship_info', {'SSL':config.SSL.value}, 'CYBERSOURCE_satchmo_checkout-step2'),

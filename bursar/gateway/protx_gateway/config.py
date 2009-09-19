@@ -8,69 +8,69 @@ _strings = (gettext('CreditCard'), gettext('Credit Card'), gettext('Prot/X Secur
 # These cards require the issue number and start date fields filled in.
 REQUIRES_ISSUE_NUMBER = ('MAESTRO', 'SOLO')
 
-GATEWAY_MODULES = config_get('GATEWAY', 'MODULES')
-GATEWAY_MODULES.add_choice(('GATEWAY_PROTX', 'Prot/X VSP Direct'))
+PAYMENT_MODULES = config_get('PAYMENT', 'MODULES')
+PAYMENT_MODULES.add_choice(('PAYMENT_PROTX', 'Prot/X VSP Direct'))
 
-GATEWAY_GROUP = ConfigurationGroup('GATEWAY_PROTX', 
+PAYMENT_GROUP = ConfigurationGroup('PAYMENT_PROTX', 
     _('Prot/X Payment Settings'), 
-    requires=GATEWAY_MODULES,
+    requires=PAYMENT_MODULES,
     ordering=101)
 
 config_register_list(
 
-    BooleanValue(GATEWAY_GROUP, 
+    BooleanValue(PAYMENT_GROUP, 
         'LIVE', 
         description=_("Accept real payments"),
         help_text=_("False if you want to be in test mode"),
         default=False),
         
-    BooleanValue(GATEWAY_GROUP, 
+    BooleanValue(PAYMENT_GROUP, 
         'SIMULATOR', 
         description=_("Simulated Transactions?"),
         help_text=_("Must be false to accept real payments"),
         default=False),
 
-    BooleanValue(GATEWAY_GROUP, 
+    BooleanValue(PAYMENT_GROUP, 
         'SKIP_POST', 
         description=_("Skip post?"),
         help_text=_("For testing only, this will skip actually posting to Prot/x servers.  This is because their servers restrict IPs of posting servers, even for tests.  If you are developing on a desktop, you'll have to enable this."),
         default=False),
         
-    StringValue(GATEWAY_GROUP, 
+    StringValue(PAYMENT_GROUP, 
         'CAPTURE',
         description=_('Payment Capture'),
         help_text=_('This can be "Payment" which captures immediately, or "Deferred".  Note that you can only use the latter if you set option on your Prot/X account first.'),
         choices = (
-            (('GATEWAY', 'Payment')),
+            (('PAYMENT', 'Payment')),
             (('DEFERRED', 'Deferred')),
         ),
-        default = 'GATEWAY'),
+        default = 'PAYMENT'),
     
     
-    BooleanValue(GATEWAY_GROUP, 
+    BooleanValue(PAYMENT_GROUP, 
         'SSL', 
         description=_("Use SSL for the checkout pages?"), 
         default=False),
 
-    ModuleValue(GATEWAY_GROUP,
+    ModuleValue(PAYMENT_GROUP,
         'MODULE',
         description=_('Implementation module'),
         hidden=True,
         default = 'payment.modules.protx'),
     
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'KEY',
         description=_("Module key"),
         hidden=True,
         default = 'PROTX'),
 
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'LABEL',
         description=_('English name for this group on the checkout screens'),
         default = 'Prot/X Secure Payments',
         help_text = _('This will be passed to the translation utility')),
 
-    MultipleStringValue(GATEWAY_GROUP,
+    MultipleStringValue(PAYMENT_GROUP,
         'CREDITCHOICES',
         description=_('Available credit cards'),
         choices = (
@@ -86,30 +86,30 @@ config_register_list(
             ),
         default = ('VISA', 'MC')),
     
-    StringValue(GATEWAY_GROUP, 
+    StringValue(PAYMENT_GROUP, 
         'VENDOR', 
         description=_('Your Vendor Name'),
         default="",
         help_text= _("This is used for Live and Test transactions.  Make sure to add your server IP address to VSP, or it won't work.")),
 
-    StringValue(GATEWAY_GROUP, 
+    StringValue(PAYMENT_GROUP, 
         'VENDOR_SIMULATOR', 
         description=_('Simulator Vendor Name'),
         default="",
         help_text= _("This is used for Live and Test transactions.  Make sure to activate the VSP Simulator (you have to directly request it) and add your server IP address to the VSP Simulator, or it won't work.")),
             
-    StringValue(GATEWAY_GROUP, 
+    StringValue(PAYMENT_GROUP, 
         'CURRENCY_CODE',
         description=_('Currency Code'),
         help_text=_('Currency code for Prot/X transactions.'),
         default = 'GBP'),
         
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'URL_BASE',
         description=_('The url base used for constructing urlpatterns which will use this module'),
         default = r'^protx/'),
         
-    BooleanValue(GATEWAY_GROUP,
+    BooleanValue(PAYMENT_GROUP,
         'EXTRA_LOGGING',
         description=_("Verbose logs"),
         help_text=_("Add extensive logs during post."),

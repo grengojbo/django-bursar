@@ -32,13 +32,13 @@ class PaymentBase(models.Model):
     details = models.CharField(_("Details"), max_length=255, blank=True, null=True)
     reason_code = models.CharField(_('Reason Code'),  max_length=255, blank=True, null=True)
 
+    @property
     def _credit_card(self):
         """Return the credit card associated with this payment."""
         try:
             return self.creditcards.get()
         except self.creditcards.model.DoesNotExist:
             return None
-    credit_card = property(_credit_card)
 
     def save(self, force_insert=False, force_update=False):
         if not self.pk:
@@ -115,7 +115,7 @@ class CreditCardDetail(models.Model):
         """
         self.display_cc = ccnum[-4:]
         encrypted_cc = _encrypt_code(ccnum)
-        if config_value('GATEWAY', 'STORE_CREDIT_NUMBERS'):
+        if config_value('PAYMENT', 'STORE_CREDIT_NUMBERS'):
             self.encrypted_cc = encrypted_cc
         else:
             standin = "%s%i%i%i" % (self.display_cc, self.expire_month, self.expire_year, self.payment_id)
@@ -143,9 +143,10 @@ class CreditCardDetail(models.Model):
     
     ccv = property(fget=getCCV, fset=setCCV)
     
-    def _decryptCC(self):
+    @property
+    def decryptedCC(self):
         ccnum = _decrypt_code(self.encrypted_cc)
-        if not config_value('GATEWAY', 'STORE_CREDIT_NUMBERS'):
+        if not config_value('PAYMENT', 'STORE_CREDIT_NUMBERS'):
             try:
                 key = _encrypt_code(ccnum + '-card')
                 encrypted_ccnum = keyedcache.cache_get(key)
@@ -153,12 +154,10 @@ class CreditCardDetail(models.Model):
             except keyedcache.NotCachedError:
                 ccnum = ""
         return ccnum
-                
-    decryptedCC = property(_decryptCC) 
 
-    def _expireDate(self):
+    @property
+    def expirationDate(self):
         return(str(self.expire_month) + "/" + str(self.expire_year))
-    expirationDate = property(_expireDate)
     
     class Meta:
         verbose_name = _("Credit Card")

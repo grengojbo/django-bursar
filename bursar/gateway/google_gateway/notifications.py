@@ -5,7 +5,7 @@ Created on 3 Mar 2009
 '''
 from django.utils.translation import ugettext as _
 from livesettings import config_get_group
-from bursar.utils import get_processor_by_key
+from payment.utils import get_processor_by_key
 from satchmo_store.shop.models import Cart, Order, Payment
 import re
 
@@ -29,8 +29,8 @@ def notify_neworder(request, data):
     private_data = data['shopping-cart.merchant-private-data']
     order_id = re.search('satchmo-order id="(\d+)"', private_data).group(1)
     order = Order.objects.get(pk=order_id)
-    payment_module = config_get_group('GATEWAY_GOOGLE')
-    processor = get_processor_by_key('GATEWAY_GOOGLE')
+    payment_module = config_get_group('PAYMENT_GOOGLE')
+    processor = get_processor_by_key('PAYMENT_GOOGLE')
     
     # record pending payment
     amount = data['order-total']
@@ -64,7 +64,7 @@ def do_charged(request, data):
         product.save()
         
     # process payment
-    processor = get_processor_by_key('GATEWAY_GOOGLE')
+    processor = get_processor_by_key('PAYMENT_GOOGLE')
     # setting status to billed (why does paypal set it to new?)
     order.add_status(status='Billed', notes=_("Paid through Google Checkout."))
     
@@ -75,7 +75,7 @@ def do_shipped(request, data):
     # find order from google id
     order = find_order(data)
     # process payment
-    processor = get_processor_by_key('GATEWAY_GOOGLE')
+    processor = get_processor_by_key('PAYMENT_GOOGLE')
     # setting status to billed (why does paypal set it to new?)
     order.add_status(status='Shipped', notes=_("Shipped through Google Checkout."))
     
@@ -101,6 +101,6 @@ def notify_chargeamount(request, data):
     # find order from google id
     order = find_order(data)
     transaction_id = data['google-order-number']
-    processor = get_processor_by_key('GATEWAY_GOOGLE')
+    processor = get_processor_by_key('PAYMENT_GOOGLE')
     processor.record_payment(amount=data['latest-charge-amount'], transaction_id=transaction_id, order=order)
 

@@ -1,8 +1,8 @@
-- fields: {group: GATEWAY_DUMMY, key: CREDITCHOICES, site: 1, value: '["Visa", "Mastercard",
+- fields: {group: PAYMENT_DUMMY, key: CREDITCHOICES, site: 1, value: '["Visa", "Mastercard",
       "Discover"]'}
   model: livesettings.setting
   pk: 1
-- fields: {group: GATEWAY, key: MODULES, site: 1, value: '["GATEWAY_DUMMY", "GATEWAY_GIFTCERTIFICATE"]'}
+- fields: {group: GATEWAY, key: MODULES, site: 1, value: '["PAYMENT_DUMMY", "PAYMENT_GIFTCERTIFICATE"]'}
   model: livesettings.setting
   pk: 2
 - fields: {group: PRODUCT, key: PRODUCT_TYPES, site: 1, value: '["product::ConfigurableProduct",

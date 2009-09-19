@@ -13,7 +13,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_get_group
 
-config = config_get_group('GATEWAY_SERMEPA')
+config = config_get_group('PAYMENT_SERMEPA')
 
 urlpatterns = patterns('',
     (r'^$', 'payment.modules.sermepa.views.pay_ship_info', {'SSL': config.SSL.value}, 'SERMEPA_satchmo_checkout-step2'),

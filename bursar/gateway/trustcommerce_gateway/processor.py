@@ -167,7 +167,7 @@ if __name__ == "__main__":
     sampleOrder.credit_card.order = "987654"
     sampleOrder.credit_card.payment_id = "123"
     
-    trustcommerce_settings = config_get_group('GATEWAY_TRUSTCOMMERCE')
+    trustcommerce_settings = config_get_group('PAYMENT_TRUSTCOMMERCE')
 
     processor = PaymentProcessor (trustcommerce_settings)
     processor.prepare_data(sampleOrder)

@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_get_group
 
-config = config_get_group('GATEWAY_PROTX')
+config = config_get_group('PAYMENT_PROTX')
 
 urlpatterns = patterns('',
      (r'^$', 'payment.modules.protx.views.pay_ship_info', 

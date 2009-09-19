@@ -13,42 +13,42 @@
 from livesettings import *
 from django.utils.translation import ugettext_lazy as _
 
-GATEWAY_MODULES = config_get('GATEWAY', 'MODULES')
-GATEWAY_MODULES.add_choice(('GATEWAY_SERMEPA', _('SERMEPA (ServiRed) Payment')))
+PAYMENT_MODULES = config_get('PAYMENT', 'MODULES')
+PAYMENT_MODULES.add_choice(('PAYMENT_SERMEPA', _('SERMEPA (ServiRed) Payment')))
 
-GATEWAY_GROUP = ConfigurationGroup('GATEWAY_SERMEPA', 
+PAYMENT_GROUP = ConfigurationGroup('PAYMENT_SERMEPA', 
     _('SERMEPA (ServiRed) Payment Module Settings'), 
-    requires=GATEWAY_MODULES,
+    requires=PAYMENT_MODULES,
     ordering = 101)
 
 config_register_list(
-    ModuleValue(GATEWAY_GROUP,
+    ModuleValue(PAYMENT_GROUP,
         'MODULE',
         description=_('Implementation module'),
         hidden=True,
         default = 'payment.modules.sermepa'
         ),
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'KEY',
         description=_("Module key"),
         hidden=True,
         default = 'SERMEPA'
         ),
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'LABEL',
         description=_('English name for this group on the checkout screens'),
         default = 'Credit Card (via SERMEPA)',
         help_text = _('This will be passed to the translation utility'),
         ordering=10
         ),
-    StringValue(GATEWAY_GROUP,
+    StringValue(PAYMENT_GROUP,
         'URL_BASE',
         description=_('The url base used for constructing urlpatterns which will use this module'),
         default = '^sermepa/',
         ordering=20
         ),
     BooleanValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'LIVE',
         description=_("Accept real payments"),
         help_text=_("False if you want to be in test mode"),
@@ -56,7 +56,7 @@ config_register_list(
         ordering=30
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_CURRENCY',
         description=_('Currency'),
         default='978',
@@ -69,14 +69,14 @@ config_register_list(
         ordering=40
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_FUC',
         description=_('Merchant FUC'),
         help_text=_('Your FUC code'),
         ordering=50
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_TITULAR',
         description=_('Merchant title'),
         help_text=_('Description of your shop which will be visible on payment confirmation screen'),
@@ -85,14 +85,14 @@ config_register_list(
 
     # signature
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_SIGNATURE_CODE',
         description=_('Signature code'),
         help_text=_('Your secret code used to sign transaction data'),
         ordering=100,
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_TEST_SIGNATURE_CODE',
         description=_('Test signature code'),
         help_text=_('Your secret code used to sign transaction data in test payments'),
@@ -100,14 +100,14 @@ config_register_list(
         ),
     # terminal
     IntegerValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_TERMINAL',
         description=_('Terminal number'),
         default=1,
         ordering=110
         ),
     IntegerValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_TEST_TERMINAL',
         description=_('Test terminal number'),
         default=1,
@@ -116,7 +116,7 @@ config_register_list(
         ),
     # post url
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'POST_URL',
         description=_('Post URL'),
         help_text=_('The SERMEPA URL for real transaction posting.'),
@@ -124,7 +124,7 @@ config_register_list(
         ordering=120
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'POST_TEST_URL',
         description=_('Test Post URL'),
         help_text=_('The SERMEPA URL for test transaction posting.'),
@@ -133,7 +133,7 @@ config_register_list(
         ),
 
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_URL_CALLBACK',
         description=_('Callback URL'),
         help_text=_('Callback URL for on-line notifications about payment progress'),
@@ -141,7 +141,7 @@ config_register_list(
         ordering=300
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_URL_OK',
         description=_('OK URL'),
         help_text=_('URL for customer to return after successful payment'),
@@ -149,7 +149,7 @@ config_register_list(
         ordering=310
         ),
     StringValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'MERCHANT_URL_KO',
         description=_('Failure URL'),
         help_text=_('URL for customer to return after payment failure'),
@@ -157,14 +157,14 @@ config_register_list(
         ordering=320
         ),
     BooleanValue(
-        GATEWAY_GROUP,
+        PAYMENT_GROUP,
         'SSL',
         description=_("Use SSL for the module checkout pages?"),
         default=False,
         ordering=330
         ),
         
-    BooleanValue(GATEWAY_GROUP,
+    BooleanValue(PAYMENT_GROUP,
         'EXTRA_LOGGING',
         description=_("Verbose logs"),
         help_text=_("Add extensive logs during post."),

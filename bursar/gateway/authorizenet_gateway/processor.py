@@ -561,7 +561,7 @@ if __name__ == "__main__":
     sampleOrder.credit_card.expirationDate = "10/11"
     sampleOrder.credit_card.ccv = "144"
 
-    authorize_settings = config_get_group('GATEWAY_AUTHORIZENET')
+    authorize_settings = config_get_group('PAYMENT_AUTHORIZENET')
     if authorize_settings.LIVE.value:
         print "Warning.  You are submitting a live order.  AUTHORIZE.NET system is set LIVE."
         

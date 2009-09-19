@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 from livesettings import config_get_group
-from bursar.config import gateway_live
+from payment.config import gateway_live
 
 def auth_required(request):
     """
@@ -12,7 +12,7 @@ def auth_required(request):
     return response
 
 def get_cred():
-    payment_module = config_get_group('GATEWAY_GOOGLE')
+    payment_module = config_get_group('PAYMENT_GOOGLE')
     live = gateway_live(payment_module)
     # get key and value
     if live:
@@ -29,7 +29,7 @@ def get_url():
     Returns the urls needed
     """
     (merchant_id, merchant_key) = get_cred()
-    payment_module = config_get_group('GATEWAY_GOOGLE')
+    payment_module = config_get_group('PAYMENT_GOOGLE')
     live = gateway_live(payment_module)
     if live:
         url_template = payment_module.POST_URL.value

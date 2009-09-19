@@ -206,7 +206,7 @@ if __name__ == "__main__":
     sampleOrder.credit_card.expirationDate = "10/09"
     sampleOrder.credit_card.ccv = "144"
 
-    cybersource_settings = config_get_group('GATEWAY_CYBERSOURCE')
+    cybersource_settings = config_get_group('PAYMENT_CYBERSOURCE')
     if cybersource_settings.LIVE.value:
         print "Warning.  You are submitting a live order.  CYBERSOURCE system is set LIVE."
         

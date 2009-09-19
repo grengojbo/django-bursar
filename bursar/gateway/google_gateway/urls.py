@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_get_group
 
-config = config_get_group('GATEWAY_GOOGLE')
+config = config_get_group('PAYMENT_GOOGLE')
 
 urlpatterns = patterns('',
      (r'^$', 'payment.modules.google.views.pay_ship_info', {'SSL': config.SSL.value}, 'GOOGLE_satchmo_checkout-step2'),

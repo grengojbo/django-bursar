@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from livesettings import config_get_group
 
-config = config_get_group('GATEWAY_GIFTCERTIFICATE')
+config = config_get_group('PAYMENT_GIFTCERTIFICATE')
 
 urlpatterns = patterns('',
      (r'^$', 'payment.modules.giftcertificate.views.pay_ship_info', {'SSL':config.SSL.value}, 'GIFTCERTIFICATE_satchmo_checkout-step2'),

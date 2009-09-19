@@ -7,8 +7,8 @@ from django.utils.http import urlencode
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from livesettings import config_get_group, config_value 
-from bursar.config import gateway_live
-from bursar.utils import get_processor_by_key
+from payment.config import gateway_live
+from payment.utils import get_processor_by_key
 from bursar.views import payship
 from satchmo_store.shop.models import Cart
 from satchmo_store.shop.models import Order, Payment
@@ -22,13 +22,13 @@ log = logging.getLogger()
 
 def pay_ship_info(request):
     return payship.base_pay_ship_info(request,
-        config_get_group('GATEWAY_PAYPAL'), payship.simple_pay_ship_process_form,
+        config_get_group('PAYMENT_PAYPAL'), payship.simple_pay_ship_process_form,
         'shop/checkout/paypal/pay_ship.html')
 pay_ship_info = never_cache(pay_ship_info)
 
 
 def confirm_info(request):
-    payment_module = config_get_group('GATEWAY_PAYPAL')
+    payment_module = config_get_group('PAYMENT_PAYPAL')
 
     try:
         order = Order.objects.from_request(request)
@@ -104,7 +104,7 @@ def ipn(request):
     """PayPal IPN (Instant Payment Notification)
     Cornfirms that payment has been completed and marks invoice as paid.
     Adapted from IPN cgi script provided at http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/456361"""
-    payment_module = config_get_group('GATEWAY_PAYPAL')
+    payment_module = config_get_group('PAYMENT_PAYPAL')
     if payment_module.LIVE.value:
         log.debug("Live IPN on %s", payment_module.KEY.value)
         url = payment_module.POST_URL.value
@@ -139,7 +139,7 @@ def ipn(request):
             order = Order.objects.get(pk=invoice)
             
             order.add_status(status='New', notes=_("Paid through PayPal."))
-            processor = get_processor_by_key('GATEWAY_PAYPAL')
+            processor = get_processor_by_key('PAYMENT_PAYPAL')
             payment = processor.record_payment(order=order, amount=gross, transaction_id=txn_id)
             
             if 'memo' in data:

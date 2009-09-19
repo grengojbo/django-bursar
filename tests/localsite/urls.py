@@ -2,5 +2,5 @@ from django.conf.urls.defaults import *
 
 
 urlpatterns = patterns('',
-    (r'example/', 'simple.localsite.views.example', {}),
+    (r'example/', 'tests.localsite.views.example', {}),
 )

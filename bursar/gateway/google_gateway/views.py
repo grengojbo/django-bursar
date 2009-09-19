@@ -5,7 +5,7 @@ from django.template.loader import get_template
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from livesettings import config_get_group, config_value
-from bursar.config import gateway_live
+from payment.config import gateway_live
 from bursar.views import confirm, payship
 from satchmo_store.shop.models import Order
 from satchmo_utils.dynamic import lookup_url
@@ -59,11 +59,11 @@ class GoogleCart(object):
 
 @never_cache
 def pay_ship_info(request):
-    return payship.simple_pay_ship_info(request, config_get_group('GATEWAY_GOOGLE'), 'shop/checkout/google/pay_ship.html')
+    return payship.simple_pay_ship_info(request, config_get_group('PAYMENT_GOOGLE'), 'shop/checkout/google/pay_ship.html')
 
 @never_cache
 def confirm_info(request):
-    payment_module = config_get_group('GATEWAY_GOOGLE')
+    payment_module = config_get_group('PAYMENT_GOOGLE')
 
     controller = confirm.ConfirmController(request, payment_module)
     if not controller.sanity_check():

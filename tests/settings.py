@@ -5,8 +5,8 @@ import os
 
 DIRNAME = os.path.dirname(__file__)
 
-DJANGO_PROJECT = 'simple'
-DJANGO_SETTINGS_MODULE = 'simple.settings'
+DJANGO_PROJECT = 'tests'
+DJANGO_SETTINGS_MODULE = 'tests.settings'
 
 ADMINS = (
      ('', ''),
@@ -80,7 +80,7 @@ TEMPLATE_CONTEXT_PROCESSORS = ('satchmo_store.shop.context_processors.settings',
                                )
 
 #ROOT_URLCONF = 'satchmo.urls'
-ROOT_URLCONF = 'simple.urls'
+ROOT_URLCONF = 'tests.urls'
 
 INSTALLED_APPS = (
     'django.contrib.sites',

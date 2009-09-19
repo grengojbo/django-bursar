@@ -59,7 +59,7 @@ class PaymentProcessor(BasePaymentProcessor):
 
         Example:
         >>> from livesettings import config_get_group
-        >>> settings = config_get_group('GATEWAY_DUMMY')
+        >>> settings = config_get_group('PAYMENT_DUMMY')
         >>> from bursar.gateway.dummy.processor import PaymentProcessor
         >>> processor = PaymentProcessor(settings.dict_values())
         # If using a normal payment gateway, data should be an Order object.

@@ -3,8 +3,8 @@ from livesettings import config_value
 
 def generate_certificate_code():
     """Creates a code, formatted according to the shop owner's preference as set in the config system."""
-    charset = config_value('GATEWAY_GIFTCERTIFICATE', 'CHARSET')
-    format = config_value('GATEWAY_GIFTCERTIFICATE', 'FORMAT')
+    charset = config_value('PAYMENT_GIFTCERTIFICATE', 'CHARSET')
+    format = config_value('PAYMENT_GIFTCERTIFICATE', 'FORMAT')
     return generate_code(charset, format)
 
 def generate_code(charset, format):
