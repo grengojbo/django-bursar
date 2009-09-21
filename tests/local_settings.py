@@ -60,6 +60,11 @@ CACHE_PREFIX = "Z"
 
 ACCOUNT_ACTIVATION_DAYS = 7
 
+try:
+    from local_bursar_settings import BURSAR_SETTINGS
+except ImportError:
+    pass
+
 #Configure logging
 LOGFILE = "satchmo.log"
 logging.basicConfig(level=logging.DEBUG,

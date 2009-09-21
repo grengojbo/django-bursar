@@ -1,11 +1,11 @@
-from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET, PaymentPending
+from bursar.numbers import trunc_decimal
 from datetime import datetime
 from decimal import Decimal
 from django.template import loader, Context
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
 from satchmo_store.shop.models import Config
-from bursar.numbers import trunc_decimal
 from tax.utils import get_tax_processor
 from xml.dom import minidom
 import random
@@ -17,29 +17,88 @@ class PaymentProcessor(BasePaymentProcessor):
     You must have an account with authorize.net in order to use this module.
     
     Additionally, you must have ARB enabled in your account to use recurring billing.
+    
+    Settings:
+        ARB: Enable ARB processing for setting up subscriptions.  Note: You 
+            must have this enabled in your Authorize account for it to work.
+        ARB_CONNECTION: Submit to URL for ARB transactions. This is the address 
+            to submit live transactions for ARB.
+        CAPTURE: Capture Payment immediately? IMPORTANT: If false, 
+            a capture attempt will be made when the order is marked as shipped.
+        CONNECTION: This is the address to submit live transactions.
+        CONNECTION_TEST: Submit to Test URL.  A Quick note on the urls.
+            If you are posting to https://test.authorize.net/gateway/transact.dll,
+            and you are not using an account whose API login ID starts with
+            "cpdev" or "cnpdev", you will get an Error 13 message. 
+            Make sure you are posting to https://certification.authorize.net/gateway/transact.dll
+            for test transactions if you do not have a cpdev or cnpdev.
+        CREDITCHOICES: Available credit cards, as (key, name).  To add American Express, 
+            use (('American Express', 'American Express'))
+        EXTRA_LOGGING: Verbose Logs?
+        LABEL: English name for this payment module on the checkout screens.
+        LIVE: Accept real payments. NOTE: If you are testing, then you can use the cc# 
+            4222222222222 to force a bad credit card response.  If you use that number 
+            and a ccv of 222, that will force a bad ccv response from authorize.net
+        LOGIN: (REQUIRED) Your authorize.net transaction login
+        MODULE: Implementation module, fully qualified.
+        SIMULATE: Force a test post?
+        SSL: Use SSL for the checkout pages?
+        STORE_NAME: (REQUIRED) The name of your store
+        TRANKEY : (REQUIRED) Your authorize.net transaction key
+        URL_BASE: The url base used for constructing urlpatterns which will use this module        
     """
-    def __init__(self, settings):
-        super(PaymentProcessor, self).__init__('authorizenet', settings)
-        self.arb_enabled = settings.ARB.value
+    def __init__(self, settings={}):
+        working_settings = {
+            'CONNECTION' : 'https://secure.authorize.net/gateway/transact.dll',
+            'CONNECTION_TEST' : 'https://test.authorize.net/gateway/transact.dll',
+            'SSL' : False,
+            'LIVE' : False,
+            'SIMULATE' : False,
+            'MODULE' : 'payment.modules.authorizenet',
+            'LABEL' : _('Credit Cards'),
+            'URL_BASE': r'^credit/',
+            'CREDITCHOICES': (
+                (('Visa','Visa')),
+                (('Mastercard','Mastercard')),
+                (('Discover','Discover'))),
+            'CAPTURE' : True,
+            'EXTRA_LOGGING' : False,
+            'ARB' : False,
+            'ARB_CONNECTION' : 'https://api.authorize.net/xml/v1/request.api',
+            'ARB_CONNECTION_TEST' : 'https://apitest.authorize.net/xml/v1/request.api'
+            }
+        working_settings.update(settings)
+        if not 'LOGIN' in working_settings:
+            raise ProcessorError('You must define a LOGIN for the AUTHORIZENET payment module.')
 
-    def authorize_payment(self, order=None, amount=NOTSET, testing=False):
+        if not 'STORE_NAME' in working_settings:
+            raise ProcessorError('You must define a STORE_NAME for the AUTHORIZENET payment module.')
+
+        if not 'TRANKEY' in working_settings:
+            raise ProcessorError('You must provide a TRANKEY for the AUTHORIZENET payment module.')
+            
+        super(PaymentProcessor, self).__init__('authorizenet', working_settings)
+
+    def authorize_payment(self, purchase=None, amount=NOTSET, testing=False):
         """Authorize a single payment.
         
         Returns: ProcessorResult
         """
-        if order:
-            self.prepare_data(order)
-        else:
-            order = self.order
-            
-        if order.paid_in_full:
-            self.log_extra('%s is paid in full, no authorization attempted.', order)
+        assert(purchase)
+        if purchase.remaining == Decimal('0.00'):
+            self.log_extra('%s is paid in full, no authorization attempted.', purchase)
             results = ProcessorResult(self.key, True, _("No charge needed, paid in full."))
         else:
-            self.log_extra('Authorizing payment of %s for %s', amount, order)
+            if amount == NOTSET:
+                try:
+                    pending = purchase.get_pending(self.key)
+                    amount = pending.amount
+                except PaymentPending.DoesNotExist:
+                    amount = purchase.remaining
+            self.log_extra('Authorizing payment of %s for %s', amount, purchase)
 
-            standard = self.get_standard_charge_data(authorize=True, amount=amount)
-            results = self.send_post(standard, testing)
+            standard = self.get_standard_charge_data(authorize=True, purchase=purchase, amount=amount)
+            results = self.send_post(standard, testing, purchase=purchase)
 
         return results
 
@@ -49,71 +108,66 @@ class PaymentProcessor(BasePaymentProcessor):
     def can_recur_bill(self):
         return True
 
-    def capture_authorized_payment(self, authorization, testing=False, order=None, amount=NOTSET):
+    def capture_authorized_payment(self, authorization, testing=False, purchase=None, amount=NOTSET):
         """Capture a single payment"""
-        if order:
-            self.prepare_data(order)
-        else:
-            order = self.order
-
-        if order.authorized_remaining == Decimal('0.00'):
-            self.log_extra('No remaining authorizations on %s', order)
+        assert(purchase)
+        if purchase.authorized_remaining == Decimal('0.00'):
+            self.log_extra('No remaining authorizations on %s', purchase)
             return ProcessorResult(self.key, True, _("Already complete"))
 
-        self.log_extra('Capturing Authorization #%i for %s', authorization.id, order)
+        self.log_extra('Capturing Authorization #%i of %s', authorization.id, amount)
+        if amount==NOTSET:
+            amount = authorization.amount
         data = self.get_prior_auth_data(authorization, amount=amount)
         results = None
         if data:
-            results = self.send_post(data, testing)
+            results = self.send_post(data, testing, purchase=purchase)
         
         return results
         
-    def capture_payment(self, testing=False, order=None, amount=NOTSET):
+    def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """Process payments without an authorization step."""
-        if order:
-            self.prepare_data(order)
-        else:
-            order = self.order
-
-        recurlist = self.get_recurring_charge_data()
+        assert(purchase)
+        recurlist = self.get_recurring_charge_data(purchase=purchase)
         if recurlist:
             success, results = self.process_recurring_subscriptions(recurlist, testing)
             if not success:
                 self.log_extra('recur payment failed, aborting the rest of the module')
                 return results
 
-        if order.paid_in_full:
-            self.log_extra('%s is paid in full, no capture attempted.', order)
+        if purchase.remaining == Decimal('0.00'):
+            self.log_extra('%s is paid in full, no capture attempted.', purchase)
             results = ProcessorResult(self.key, True, _("No charge needed, paid in full."))
-            self.record_payment()
+            self.record_payment(purchase=purchase)
         else:
-            self.log_extra('Capturing payment for %s', order)
+            self.log_extra('Capturing payment for %s', purchase)
             
-            standard = self.get_standard_charge_data(amount=amount)
-            results = self.send_post(standard, testing)
+            standard = self.get_standard_charge_data(amount=amount, purchase=purchase)
+            results = self.send_post(standard, testing, purchase=purchase)
             
         return results
 
     def get_prior_auth_data(self, authorization, amount=NOTSET):
         """Build the dictionary needed to process a prior auth capture."""
-        settings = self.settings
         trans = {'authorization' : authorization}
-        remaining = authorization.remaining()
+        remaining = authorization.remaining
         if amount == NOTSET or amount > remaining:
+            if amount != NOTSET:
+                self.log_extra('Adjusting auth amount from %s to %s', amount, remaining)
             amount = remaining
         
         balance = trunc_decimal(amount, 2)
         trans['amount'] = amount
         
         if self.is_live():
-            conn = settings.CONNECTION.value
+            conn = self.settings["CONNECTION"]
             self.log_extra('Using live connection.')
         else:
             testflag = 'TRUE'
-            conn = settings.CONNECTION_TEST.value
+            conn = self.settings["CONNECTION_TEST"]
             self.log_extra('Using test connection.')
             
-        if self.settings.SIMULATE.value:
+        if self.settings["SIMULATE"]:
             testflag = 'TRUE'
         else:
             testflag = 'FALSE'
@@ -121,8 +175,8 @@ class PaymentProcessor(BasePaymentProcessor):
         trans['connection'] = conn
 
         trans['configuration'] = {
-            'x_login' : settings.LOGIN.value,
-            'x_tran_key' : settings.TRANKEY.value,
+            'x_login' : self.settings["LOGIN"],
+            'x_tran_key' : self.settings["TRANKEY"],
             'x_version' : '3.1',
             'x_relay_response' : 'FALSE',
             'x_test_request' : testflag,
@@ -150,21 +204,20 @@ class PaymentProcessor(BasePaymentProcessor):
         
     def get_void_auth_data(self, authorization):
         """Build the dictionary needed to process a prior auth release."""
-        settings = self.settings
         trans = {
             'authorization' : authorization,
             'amount' : Decimal('0.00'),
         }
 
         if self.is_live():
-            conn = settings.CONNECTION.value
+            conn = self.settings['CONNECTION']
             self.log_extra('Using live connection.')
         else:
             testflag = 'TRUE'
-            conn = settings.CONNECTION_TEST.value
+            conn = self.settings["CONNECTION_TEST"]
             self.log_extra('Using test connection.')
 
-        if self.settings.SIMULATE.value:
+        if self.settings['SIMULATE']:
             testflag = 'TRUE'
         else:
             testflag = 'FALSE'
@@ -172,8 +225,8 @@ class PaymentProcessor(BasePaymentProcessor):
         trans['connection'] = conn
 
         trans['configuration'] = {
-            'x_login' : settings.LOGIN.value,
-            'x_tran_key' : settings.TRANKEY.value,
+            'x_login' : self.settings["LOGIN"],
+            'x_tran_key' : self.settings["TRANKEY"],
             'x_version' : '3.1',
             'x_relay_response' : 'FALSE',
             'x_test_request' : testflag,
@@ -193,82 +246,72 @@ class PaymentProcessor(BasePaymentProcessor):
 
         return trans
 
-    def get_recurring_charge_data(self, testing=False):
+    def get_recurring_charge_data(self, purchase=None, testing=False):
         """Build the list of dictionaries needed to process a recurring charge.
         
         Because Authorize can only take one subscription at a time, we build a list
         of the transaction dictionaries, for later sequential posting.
         """
-        if not self.arb_enabled:
+        assert(purchase)
+        if not self.settings['ARB']:
             return []
         
         # get all subscriptions from the order
-        subscriptions = self.get_recurring_orderitems()
+        subscriptions = purchase.recurring_lineitems()
         
         if len(subscriptions) == 0:
             self.log_extra('No subscription items')
             return []
 
-        settings = self.settings            
         # set up the base dictionary
         trans = {}
 
         if self.is_live():
-            conn = settings.ARB_CONNECTION.value
+            conn = self.settings['ARB_CONNECTION']
             self.log_extra('Using live recurring charge connection.')
         else:
-            conn = settings.ARB_CONNECTION_TEST.value
+            conn = self.settings['ARB_CONNECTION_TEST']
             self.log_extra('Using test recurring charge connection.')
-        
-        shop_config = Config.objects.get_current()
-        
+                
         trans['connection'] = conn
         trans['config'] = {
-            'merchantID' : settings.LOGIN.value,
-            'transactionKey' : settings.TRANKEY.value,
-            'shop_name' : shop_config.store_name,
+            'merchantID' : self.settings['LOGIN'],
+            'transactionKey' : self.settings['TRANKEY'],
+            'shop_name' : self.settings['STORE_NAME'],
         }
-        trans['order'] = self.order
-        trans['card'] = self.order.credit_card
-        trans['card_expiration'] =  "%4i-%02i" % (self.order.credit_card.expire_year, self.order.credit_card.expire_month)
+        trans['purchase'] = purchase
+        cc = self.purchase.credit_card
+        trans['card'] = cc
+        trans['card_expiration'] =  "%4i-%02i" % (cc.expire_year, cc.expire_month)
         
         translist = []
-        taxer = get_tax_processor(user = self.order.contact.user)
-        
+        # remove        
         for subscription in subscriptions:
-            product = subscription.product
+            lineitem = subscription.lineitem
+
             subtrans = trans.copy()
             subtrans['subscription'] = subscription
-            subtrans['product'] = product
-            
-            sub = product.subscriptionproduct
-            
-            trial = sub.get_trial_terms(0)
-            if trial:
-                price = trunc_decimal(trial.price, 2)
-                trial_amount = price
-                if price and subscription.product.taxable:
-                    trial_amount = taxer.by_price(subscription.product.taxClass, price)
-                    #todo, maybe add shipping for trial?
-                amount = sub.recurring_price()
-                trial_occurrences = trial.occurrences
-                if not trial_occurrences:
-                    self.log.warn("Trial expiration period is less than one recurring billing cycle. " +
-                        "Authorize does not allow this, so the trial period has been adjusted to be equal to one recurring cycle.")
-                    trial_occurrences = 1
+            subtrans['product'] = lineitem.name
+
+            if subscription.trial:
+                trial_amount = lineitem.total
+                trial_tax = lineitem.tax
+                trial_shipping = lineitem.shipping
+                amount = subscription.recurring_price()
+                trial_occurrences = subscription.trial_times                
             else:
                 trial_occurrences = 0
                 trial_amount = Decimal('0.00')
-                amount = subscription.total_with_tax
+                amount = subscription.recurring_price
 
-            occurrences = sub.recurring_times + trial_occurrences
+            occurrences = subscription.recurring_times + subscription.trial_times
             if occurrences > 9999:
                 occurrences = 9999
 
-            subtrans['occurrences'] = occurrences
-            subtrans['trial_occurrences'] = trial_occurrences
-            subtrans['trial'] = trial
-            subtrans['trial_amount'] = trunc_decimal(trial_amount, 2)
+            subtrans['occurrences'] = subscription.recurring_times
+            subtrans['trial'] = subscription.trial
+            subtrans['trial_amount'] = trial_amount
+            subtrans['trial_occurrences'] = trial_occurrances
             subtrans['amount'] = trunc_decimal(amount, 2)
             if trial:
                 charged_today = trial_amount
@@ -282,27 +325,25 @@ class PaymentProcessor(BasePaymentProcessor):
             
         return translist
         
-    def get_standard_charge_data(self, amount=NOTSET, authorize=False):
+    def get_standard_charge_data(self, purchase=None, amount=NOTSET, authorize=False):
         """Build the dictionary needed to process a credit card charge"""
-
-        order = self.order
-        settings = self.settings
+        assert(purchase)
         trans = {}
         if amount == NOTSET:
-            amount = order.balance
+            amount = purchase.total
             
         balance = trunc_decimal(amount, 2)
         trans['amount'] = balance
         
         if self.is_live():
-            conn = settings.CONNECTION.value
+            conn = self.settings['CONNECTION']
             self.log_extra('Using live connection.')
         else:
             testflag = 'TRUE'
-            conn = settings.CONNECTION_TEST.value
+            conn = self.settings['CONNECTION_TEST']
             self.log_extra('Using test connection.')
             
-        if self.settings.SIMULATE.value:
+        if self.settings['SIMULATE']:
             testflag = 'TRUE'
         else:
             testflag = 'FALSE'
@@ -317,8 +358,8 @@ class PaymentProcessor(BasePaymentProcessor):
             transaction_type = 'AUTH_ONLY'
                         
         trans['configuration'] = {
-            'x_login' : settings.LOGIN.value,
-            'x_tran_key' : settings.TRANKEY.value,
+            'x_login' : self.settings['LOGIN'],
+            'x_tran_key' : self.settings['TRANKEY'],
             'x_version' : '3.1',
             'x_relay_response' : 'FALSE',
             'x_test_request' : testflag,
@@ -331,21 +372,21 @@ class PaymentProcessor(BasePaymentProcessor):
         self.log_extra('standard charges configuration: %s', trans['configuration'])
         
         trans['custBillData'] = {
-            'x_first_name' : order.contact.first_name,
-            'x_last_name' : order.contact.last_name,
-            'x_address': order.full_bill_street,
-            'x_city': order.bill_city,
-            'x_state' : order.bill_state,
-            'x_zip' : order.bill_postal_code,
-            'x_country': order.bill_country,
-            'x_phone' : order.contact.primary_phone.phone,
-            'x_email' : order.contact.email,
+            'x_first_name' : purchase.first_name,
+            'x_last_name' : purchase.last_name,
+            'x_address': purchase.full_bill_street,
+            'x_city': purchase.bill_city,
+            'x_state' : purchase.bill_state,
+            'x_zip' : purchase.bill_postal_code,
+            'x_country': purchase.bill_country,
+            'x_phone' : purchase.phone,
+            'x_email' : purchase.email,
             }
     
         self.log_extra('standard charges configuration: %s', trans['custBillData'])
         
-        invoice = "%s" % order.id
-        failct = order.paymentfailures.count()
+        invoice = "%s" % purchase.orderno
+        failct = purchase.paymentfailures.count()
         if failct > 0:
             invoice = "%s_%i" % (invoice, failct)
 
@@ -353,8 +394,9 @@ class PaymentProcessor(BasePaymentProcessor):
             # add random test id to this, for testing repeatability
             invoice = "%s_test_%s_%i" % (invoice,  datetime.now().strftime('%m%d%y'), random.randint(1,1000000))
         
-        cc = order.credit_card.decryptedCC
-        ccv = order.credit_card.ccv
+        card = purchase.credit_card
+        cc = card.decryptedCC
+        ccv = card.ccv
         if not self.is_live() and cc == '4222222222222':
             if ccv == '222':
                 self.log_extra('Setting a bad ccv number to force an error')
@@ -365,7 +407,7 @@ class PaymentProcessor(BasePaymentProcessor):
         trans['transactionData'] = {
             'x_amount' : balance,
             'x_card_num' : cc,
-            'x_exp_date' : order.credit_card.expirationDate,
+            'x_exp_date' : card.expirationDate,
             'x_card_code' : ccv,
             'x_invoice_num' : invoice
             }
@@ -376,8 +418,8 @@ class PaymentProcessor(BasePaymentProcessor):
         
         redactedData = {
             'x_amount' : balance,
-            'x_card_num' : order.credit_card.display_cc,
-            'x_exp_date' : order.credit_card.expirationDate,
+            'x_card_num' : card.display_cc,
+            'x_exp_date' : card.expirationDate,
             'x_card_code' : "REDACTED",
             'x_invoice_num' : invoice
         }
@@ -386,15 +428,15 @@ class PaymentProcessor(BasePaymentProcessor):
         
         return trans
         
-    def process_recurring_subscriptions(self, recurlist, testing=False):
+    def process_recurring_subscriptions(self, recurlist, purchase=None, testing=False):
         """Post all subscription requests."""    
-        
+        assert(purchase)
         results = []
         for recur in recurlist:
             success, reason, response, subscription_id = self.process_recurring_subscription(recur, testing=testing)
             if success:
                 if not testing:
-                    payment = self.record_payment(order=self.order, amount=recur['charged_today'], transaction_id=subscription_id, reason_code=reason)
+                    payment = self.record_payment(purchase=purchase, amount=recur['charged_today'], transaction_id=subscription_id, reason_code=reason)
                     results.append(ProcessorResult(self.key, success, response, payment=payment))
             else:
                 self.log.info("Failed to process recurring subscription, %s: %s", reason, response)
@@ -410,7 +452,7 @@ class PaymentProcessor(BasePaymentProcessor):
         ctx = Context(data)
         request = t.render(ctx)
         
-        if self.settings.EXTRA_LOGGING.value:
+        if self.settings['EXTRA_LOGGING']:
             data['redact'] = True
             ctx = Context(data)
             redacted = t.render(ctx)
@@ -448,18 +490,14 @@ class PaymentProcessor(BasePaymentProcessor):
         return success, reason, response_text, subscriptionID
         
         
-    def release_authorized_payment(self, order=None, auth=None, testing=False):
+    def release_authorized_payment(self, purchase=None, auth=None, testing=False):
         """Release a previously authorized payment."""
-        if order:
-            self.prepare_data(order)
-        else:
-            order = self.order
-
-        self.log_extra('Releasing Authorization #%i for %s', auth.id, order)
+        assert(purchase)
+        self.log_extra('Releasing Authorization #%i for %s', auth.id, purchase)
         data = self.get_void_auth_data(auth)
         results = None
         if data:
-            results = self.send_post(data, testing)
+            results = self.send_post(data, testing, purchase=purchase)
             
         if results.success:
             auth.complete = True
@@ -467,7 +505,7 @@ class PaymentProcessor(BasePaymentProcessor):
             
         return results
         
-    def send_post(self, data, testing=False, amount=NOTSET):
+    def send_post(self, data, testing=False, purchase=None, amount=NOTSET):
         """Execute the post to Authorize Net.
         
         Params:
@@ -477,6 +515,7 @@ class PaymentProcessor(BasePaymentProcessor):
         Returns:
         - ProcessorResult
         """
+        assert(purchase)
         self.log.info("About to send a request to authorize.net: %(connection)s\n%(logPostString)s", data)
 
         conn = urllib2.Request(url=data['connection'], data=data['postString'])
@@ -501,7 +540,7 @@ class PaymentProcessor(BasePaymentProcessor):
         if success and not testing:
             if data.get('authorize_only', False):
                 self.log_extra('Success, recording authorization')
-                payment = self.record_authorization(order=self.order, amount=amount, 
+                payment = self.record_authorization(purchase=purchase, amount=amount, 
                     transaction_id=transaction_id, reason_code=reason_code)
             else:
                 if amount <= 0:
@@ -509,12 +548,12 @@ class PaymentProcessor(BasePaymentProcessor):
                 else:
                     self.log_extra('Success, recording payment')
                 authorization = data.get('authorization', None)
-                payment = self.record_payment(order=self.order, amount=amount, 
+                payment = self.record_payment(purchase=purchase, amount=amount, 
                     transaction_id=transaction_id, reason_code=reason_code, authorization=authorization)
             
         elif not testing:
             payment = self.record_failure(amount=amount, transaction_id=transaction_id, 
-                reason_code=reason_code, details=response_text)
+                reason_code=reason_code, details=response_text, purchase=purchase)
 
         self.log_extra("Returning success=%s, reason=%s, response_text=%s", success, reason_code, response_text)
         return ProcessorResult(self.key, success, response_text, payment=payment)
@@ -561,13 +600,17 @@ if __name__ == "__main__":
     sampleOrder.credit_card.expirationDate = "10/11"
     sampleOrder.credit_card.ccv = "144"
 
-    authorize_settings = config_get_group('PAYMENT_AUTHORIZENET')
-    if authorize_settings.LIVE.value:
+    from payment.tests import get_payment_settings
+    authorize_settings = get_payment_settings()
+    
+    config_get_group('PAYMENT_AUTHORIZENET')
+    if authorize_settings['LIVE']:
         print "Warning.  You are submitting a live order.  AUTHORIZE.NET system is set LIVE."
         
-    processor = PaymentProcessor(authorize_settings)
+    processor = PaymentProcessor(authorize_settings.dict_values())
     processor.prepare_data(sampleOrder)
-    results = processor.process(testing=True)
+    purchase = sampleOrder.get_or_create_purchase()
+    results = processor.process(testing=True, purchase=purchase)
     print results
 
 

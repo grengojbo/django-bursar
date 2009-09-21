@@ -113,6 +113,7 @@ INSTALLED_APPS = (
     #'satchmo_ext.brand',
     'bursar',
     'payment',
+    'bursar.gateway.authorizenet_gateway',
     'bursar.gateway.autosuccess_gateway',
     'bursar.gateway.cod_gateway',
     'bursar.gateway.dummy_gateway',

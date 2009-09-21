@@ -11,7 +11,7 @@ from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 class PaymentProcessor(BasePaymentProcessor):
 
     def __init__(self, settings={}):
-        default_settings = {
+        working_settings = {
             'SSL': False,
             'LIVE': False,
             'LABEL': _('Payment test module'),
@@ -20,7 +20,8 @@ class PaymentProcessor(BasePaymentProcessor):
             'AUTH_EARLY': False,
             'EXTRA_LOGGING': False,
         }
-        super(PaymentProcessor, self).__init__('dummy', default_settings, settings)
+        working_settings.update(settings)
+        super(PaymentProcessor, self).__init__('dummy', working_settings)
 
     def authorize_payment(self, purchase=None, testing=False, amount=NOTSET):
         """

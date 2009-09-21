@@ -9,7 +9,7 @@ class PaymentProcessor(BasePaymentProcessor):
     Autosuccess Payment Module
     """
     def __init__(self, settings={}):
-        default_settings = {
+        working_settings = {
             'SSL': False,
             'LIVE': False,
             'LABEL': _('Payment Autosuccess Module'),
@@ -17,7 +17,8 @@ class PaymentProcessor(BasePaymentProcessor):
             'AUTH_EARLY': False,
             'EXTRA_LOGGING': False,
         }
-        super(PaymentProcessor, self).__init__('autosuccess', default_settings, settings)
+        working_settings.update(settings)
+        super(PaymentProcessor, self).__init__('autosuccess', working_settings)
 
     def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         assert(purchase)

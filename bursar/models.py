@@ -4,13 +4,14 @@ Also stores credit card info in an encrypted format.
 """
 
 from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField, CurrencyField
+from bursar.bursar_settings import get_bursar_setting
 from Crypto.Cipher import Blowfish
 from datetime import datetime
 from decimal import Decimal
 from django.conf import settings
 from django.db import models
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from livesettings import config_value
 import base64
 import keyedcache
 import logging
@@ -36,8 +37,8 @@ class PaymentBase(models.Model):
     def _credit_card(self):
         """Return the credit card associated with this payment."""
         try:
-            return self.creditcards.get()
-        except self.creditcards.model.DoesNotExist:
+            return self.creditcard
+        except CreditCardDetail.DoesNotExist:
             return None
 
     def save(self, force_insert=False, force_update=False):
@@ -67,16 +68,13 @@ class Authorization(PaymentBase):
         else:
             return u"Order Authorization (unsaved)"
 
+    @property
     def remaining(self):
-        payments = [p.amount for p in self.purchase.payments.all()]
-        if payments:
-            amount = reduce(operator.add, payments)
-        else:
-            amount = Decimal('0.00')
-        
+        amount = self.purchase.total_payments        
         remaining = self.purchase.total - amount
         if remaining > self.amount:
             remaining = self.amount
+        return remaining
             
     def save(self, force_insert=False, force_update=False):
         # create linked payment
@@ -96,7 +94,7 @@ class CreditCardDetail(models.Model):
     Stores an encrypted CC number, its information, and its
     displayable number.
     """
-    payment = models.ForeignKey('Payment', related_name="creditcards")
+    payment = models.OneToOneField('Payment', related_name="creditcard")
     credit_type = CreditChoiceCharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
         max_length=4, )
@@ -115,10 +113,11 @@ class CreditCardDetail(models.Model):
         """
         self.display_cc = ccnum[-4:]
         encrypted_cc = _encrypt_code(ccnum)
-        if config_value('PAYMENT', 'STORE_CREDIT_NUMBERS'):
+        if get_bursar_setting('STORE_CREDIT_NUMBERS'):
             self.encrypted_cc = encrypted_cc
         else:
-            standin = "%s%i%i%i" % (self.display_cc, self.expire_month, self.expire_year, self.payment_id)
+            log.debug('standin=%s', (self.display_cc, self.expire_month, self.expire_year, self.payment.id))
+            standin = "%s%i%i%i" % (self.display_cc, self.expire_month, self.expire_year, self.payment.id)
             self.encrypted_cc = _encrypt_code(standin)
             key = _encrypt_code(standin + '-card')
             keyedcache.cache_set(key, skiplog=True, length=60*60, value=encrypted_cc)
@@ -146,7 +145,7 @@ class CreditCardDetail(models.Model):
     @property
     def decryptedCC(self):
         ccnum = _decrypt_code(self.encrypted_cc)
-        if not config_value('PAYMENT', 'STORE_CREDIT_NUMBERS'):
+        if not get_bursar_setting('STORE_CREDIT_NUMBERS'):
             try:
                 key = _encrypt_code(ccnum + '-card')
                 encrypted_ccnum = keyedcache.cache_get(key)
@@ -180,6 +179,7 @@ class Payment(PaymentBase):
     A payment attempt on a purchase.
     """
     purchase = models.ForeignKey('Purchase', related_name="payments")
+    success = models.BooleanField(_('Success'), default=False)
     objects = PaymentManager()
 
     def __unicode__(self):
@@ -283,9 +283,23 @@ class Purchase(models.Model):
         """Return the credit card associated with this payment.
         """
         for payment in self.payments.order_by('-time_stamp'):
-            if payment.creditcards.count() > 0:
-                return payment.creditcards.get()
+            try:
+                return payment.creditcard
+            except CreditCardDetail.DoesNotExist:
+                pass
         return None
+        
+    @property
+    def full_bill_street(self, delim="\n"):
+        """
+        Return both billing street entries separated by delim.
+        Note - Use linebreaksbr filter to convert to html in templates.
+        """
+        if self.bill_street2:
+            address = self.bill_street1 + delim + self.bill_street2
+        else:
+            address = self.bill_street1
+        return mark_safe(address)
         
     def get_pending(self, method, raises=True):
         pending = self.paymentspending.filter(method__exact=method)
@@ -341,12 +355,12 @@ class Purchase(models.Model):
     @property
     def total_payments(self):
         """Returns the total value of all completed payments"""
-        payments = [p.amount for p in self.payments.all()]
+        payments = [p.amount for p in self.payments.filter(success=True)]
         if payments:
             amount = reduce(operator.add, payments)
         else:
             amount = Decimal('0.00')
-            
+        log.debug("total payments for %s=%s", self, amount)
         return amount
 
   
@@ -403,18 +417,33 @@ class LineItem(models.Model):
         return "LineItem: %s - %d" % (self.name, self.total) 
 
 class RecurringLineItem(models.Model):
-    """Extra information needed for a recurring line item, such as a subscription"""
+    """Extra information needed for a recurring line item, such as a subscription.
+    
+    To make a trial, put the trial price, tax, etc. into the parent LineItem, and mark this object
+    trial=True, trial_length=xxx
+    """
     lineitem = models.OneToOneField(LineItem, verbose_name=_("Line Item"), 
         primary_key=True, related_name="recurdetails")
     recurring = models.BooleanField(_("Recurring Billing"), 
         help_text=_("Customer will be charged the regular product price on a periodic basis."), 
         default=False)
-    recurring_times = models.IntegerField(_("Recurring Times"), 
+    recurring_price = CurrencyField("Recurring Price", default=Decimal('0.00'),
+        max_digits=18, decimal_places=2)
+    recurring_shipping = CurrencyField("Recurring Shipping Price", default=Decimal('0.00'),
+        max_digits=18, decimal_places=2)
+    recurring_times = models.PositiveIntegerField(_("Recurring Times"), 
         help_text=_("Number of payments which will occur at the regular rate.  (optional)"), 
-        null=True, blank=True)
-    expire_length = models.IntegerField(_("Duration"), 
+        default=0)
+    expire_length = models.PositiveIntegerField(_("Duration"), 
         help_text=_("Length of each billing cycle"), 
         null=True, blank=True)
+    trial = models.BooleanField(_("Trial?"), default=False)
+    trial_length = models.PositiveIntegerField(_("Trial length"),
+        help_text="Number of subscription units for the trial",
+        default=0)
+    trial_times = models.PositiveIntegerField(_("Trial Times"),
+            help_text="Number of trial cycles",
+            default=1)
     SUBSCRIPTION_UNITS = (
         ('DAY', _('Days')),
         ('MONTH', _('Months'))

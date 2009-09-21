@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-from bursar.models import Authorization, Payment, Purchase
+from bursar.models import Authorization, Payment, Purchase, CreditCardDetail
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.sites.models import Site
@@ -11,7 +11,7 @@ import random
 
 alphabet = 'abcdefghijklmnopqrstuvwxyz'
 
-def make_test_purchase(**kwargs):
+def make_test_purchase(payment={}, **kwargs):
     purchaseargs = {
         "first_name": 'Mister',
         "last_name": 'Tester',
@@ -35,6 +35,21 @@ def make_test_purchase(**kwargs):
     purchase = Purchase(**purchaseargs)
     purchase.recalc()
     purchase.save()
+    if payment:
+        for f in ('card_type', 'expire_month', 'expire_year', 'card_number', 'ccv'):
+            assert(f in payment)
+        p = Payment(purchase = purchase, amount = purchase.total)
+        p.save()
+        c = CreditCardDetail(
+            payment=p, 
+            credit_type=payment['card_type'],
+            expire_month=payment['expire_month'],
+            expire_year=payment['expire_year'],
+        )
+        c.storeCC(payment['card_number'])
+        c.ccv = payment['ccv']
+        c.save()        
+        
     return purchase
 
 class TestBase(TestCase):

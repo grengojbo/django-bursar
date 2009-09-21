@@ -8,7 +8,7 @@ class PaymentProcessor(BasePaymentProcessor):
     """COD Payment Processor"""
 
     def __init__(self, settings={}):
-        default_settings = {
+        working_settings = {
             'SSL': False,
             'LIVE': False,
             'LABEL': _('Payment COD Module'),
@@ -16,7 +16,8 @@ class PaymentProcessor(BasePaymentProcessor):
             'AUTH_EARLY': False,
             'EXTRA_LOGGING': False,
         }
-        super(PaymentProcessor, self).__init__('cod', default_settings, settings)
+        working_settings.update(settings)
+        super(PaymentProcessor, self).__init__('cod', working_settings)
 
     def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """

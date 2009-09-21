@@ -7,8 +7,9 @@ from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 class PaymentProcessor(BasePaymentProcessor):
 
     def __init__(self, settings={}):
-        default_settings={}
-        super(PaymentProcessor, self).__init__('purchaseorder', default_settings, settings)
+        working_settings={}
+        working_settings.update(settings)
+        super(PaymentProcessor, self).__init__('purchaseorder', working_settings)
 
     def can_refund(self):
         return True

@@ -14,11 +14,10 @@ NOTSET = object()
 
 class BasePaymentProcessor(object):
 
-    def __init__(self, key, default_settings, settings):
+    def __init__(self, key, settings):
         self.key = key
-        default_settings.update(settings)
-        self.settings = default_settings
-        self.log = logging.getLogger('payment.' + key)
+        self.settings = settings
+        self.log = logging.getLogger('bursar.gateway.' + key)
 
     def allowed(self, user, amount):
         """Allows different payment processors to be allowed for certain situations."""
@@ -65,7 +64,7 @@ class BasePaymentProcessor(object):
         results = []
         if self.can_authorize():
             auths = purchase.authorizations.filter(method__exact=self.key, complete=False)
-            self.log_extra('Capturing %i %s authorizations for purchase on order #%i', auths.count(), self.key, purchase.orderno)
+            self.log_extra('Capturing %i %s authorizations for purchase on order #%s', auths.count(), self.key, purchase.orderno)
             for auth in auths:
                 results.append(self.capture_authorized_payment(auth, purchase=Purchase))
                 
@@ -196,7 +195,7 @@ class PaymentRecorder(object):
     def authorize_payment(self, amount=NOTSET):
         """Make an authorization, using the existing pending payment if found"""
         self.amount = amount
-        log.debug("Recording %s authorization of %s for %s", self.key, self.amount, self.purchase)
+        log.debug("Recording %s authorization of %s for #%s", self.key, self.amount, self.purchase.orderno)
 
         self.pending = self.purchase.get_pending(self.key, raises=False)
         
@@ -220,9 +219,11 @@ class PaymentRecorder(object):
     def capture_authorized_payment(self, authorization, amount=NOTSET):
         """Convert an authorization into a payment."""
         self.amount = amount
-        log.debug("Recording %s capture of authorization #%i for %s", self.key, authorization.id, self.purchase)
+        log.debug("Recording %s capture of authorization #%i for #%s", self.key, authorization.id, authorization.purchase.orderno)
 
         self.payment = authorization.capture
+        self.payment.success=True
+        self.payment.save()
         self.cleanup()
         return self.payment
 
@@ -244,9 +245,10 @@ class PaymentRecorder(object):
         
             self.payment = Payment(
                 purchase=self.purchase, 
-                method=self.key)
+                method=self.key,
+                success=True)
                 
-        log.debug("Recorded %s payment of %s for %s", self.key, self.amount, self.purchase)
+        log.debug("Recorded %s payment of %s for #%s", self.key, self.amount, self.purchase.orderno)
         self.cleanup()
         return self.payment
         
