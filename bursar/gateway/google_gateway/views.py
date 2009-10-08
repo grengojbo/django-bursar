@@ -6,7 +6,7 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from livesettings import config_get_group, config_value
 from payment.config import gateway_live
-from bursar.views import confirm, payship
+from payment.views import confirm, payship
 from satchmo_store.shop.models import Order
 from satchmo_utils.dynamic import lookup_url
 from satchmo_utils.views import bad_or_missing

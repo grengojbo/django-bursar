@@ -8,8 +8,8 @@ from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from livesettings import config_get_group, config_value 
 from payment.config import gateway_live
-from payment.utils import get_processor_by_key
-from bursar.views import payship
+from payment.utils import get_processor_by_key, get_processor_by_module
+from payment.views import payship
 from satchmo_store.shop.models import Cart
 from satchmo_store.shop.models import Order, Payment
 from satchmo_utils.dynamic import lookup_url, lookup_template
@@ -61,9 +61,8 @@ def confirm_info(request):
             payment_module.RETURN_ADDRESS.value, include_server=True)
     except urlresolvers.NoReverseMatch:
         address = payment_module.RETURN_ADDRESS.value
-    
-    processor_module = payment_module.MODULE.load_module('processor')
-    processor = processor_module.PaymentProcessor(payment_module)
+
+    processor = get_processor_by_module(payment_module)
     processor.create_pending_payment(order=order)
     default_view_tax = config_value('TAX', 'DEFAULT_VIEW_TAX') 
   

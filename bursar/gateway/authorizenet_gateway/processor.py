@@ -1,3 +1,4 @@
+from bursar.errors import GatewayError
 from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET, PaymentPending
 from bursar.numbers import trunc_decimal
 from datetime import datetime
@@ -69,13 +70,13 @@ class PaymentProcessor(BasePaymentProcessor):
             }
         working_settings.update(settings)
         if not 'LOGIN' in working_settings:
-            raise ProcessorError('You must define a LOGIN for the AUTHORIZENET payment module.')
+            raise GatewayError('You must define a LOGIN for the AUTHORIZENET payment module.')
 
         if not 'STORE_NAME' in working_settings:
-            raise ProcessorError('You must define a STORE_NAME for the AUTHORIZENET payment module.')
+            raise GatewayError('You must define a STORE_NAME for the AUTHORIZENET payment module.')
 
         if not 'TRANKEY' in working_settings:
-            raise ProcessorError('You must provide a TRANKEY for the AUTHORIZENET payment module.')
+            raise GatewayError('You must provide a TRANKEY for the AUTHORIZENET payment module.')
             
         super(PaymentProcessor, self).__init__('authorizenet', working_settings)
 

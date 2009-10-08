@@ -17,7 +17,7 @@ from django.views.decorators.cache import never_cache
 from django.template import RequestContext
 from livesettings import config_get_group, config_value 
 from payment.utils import get_processor_by_key
-from bursar.views import payship
+from payment.views import payship
 from satchmo_store.shop.models import Order, Cart
 from satchmo_utils.dynamic import lookup_url, lookup_template
 from django.utils.translation import ugettext_lazy as _

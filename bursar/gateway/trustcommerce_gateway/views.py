@@ -1,5 +1,5 @@
 from livesettings import config_get_group
-from bursar.views import confirm, payship
+from payment.views import confirm, payship
     
 def pay_ship_info(request):
     return payship.credit_pay_ship_info(request, config_get_group('PAYMENT_TRUSTCOMMERCE'))

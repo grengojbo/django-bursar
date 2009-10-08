@@ -118,6 +118,7 @@ INSTALLED_APPS = (
     'bursar.gateway.cod_gateway',
     'bursar.gateway.dummy_gateway',
     'bursar.gateway.purchaseorder_gateway',
+    'payment.modules.authorizenet',
     'payment.modules.autosuccess',
     'payment.modules.cod',
     'payment.modules.dummy',
