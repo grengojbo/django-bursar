@@ -11,4 +11,12 @@ Satchmo Changes
 ---------------
 
 template moves:
-payment/paypal -> payment/paypal
+templates/shop/checkout/auto modules/autosuccess/templates/payment/autosuccess
+templates/shop/checkout/*html templates/payment/
+templates/shop/checkout/cod modules/cod/templates/payment/
+templates/shop/checkout/cybersource modules/cybersource/templates/payment/
+templates/shop/checkout/google modules/google/templates/payment/
+templates/shop/checkout/paypal modules/paypal/templates/payment/
+templates/shop/checkout/protx modules/protx/templates/payment/
+templates/shop/checkout/purchaseorder modules/purchaseorder/templates/payment/
+templates/shop/checkout/sermepa modules/sermepa/templates/payment/

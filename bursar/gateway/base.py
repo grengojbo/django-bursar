@@ -198,7 +198,6 @@ class PaymentRecorder(object):
         log.debug("Recording %s authorization of %s for #%s", self.key, self.amount, self.purchase.orderno)
 
         self.pending = self.purchase.get_pending(self.key, raises=False)
-        
 
         if self.pending:
             self.payment = Authorization()

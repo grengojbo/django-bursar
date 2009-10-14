@@ -187,6 +187,9 @@ class Payment(PaymentBase):
             return u"Payment #%i: amount=%s" % (self.id, self.amount)
         else:
             return u"Payment (unsaved)"
+            
+    def add_note(self, note):
+        PaymentNote.objects.create(payment=self, note=note)
 
     class Meta:
         verbose_name = _("Payment")
@@ -198,6 +201,10 @@ class PaymentFailure(PaymentBase):
     Details of a failure during a payment attempt
     """
     purchase = models.ForeignKey('Purchase', null=True, blank=True, related_name='paymentfailures')
+
+class PaymentNote(models.Model):
+    payment = models.ForeignKey(_('Payment'), related_name="notes")
+    note = models.TextField(_('Note'))
 
 class PaymentPending(PaymentBase):
     """

@@ -7,5 +7,5 @@ def pay_ship_info(request):
 pay_ship_info = never_cache(pay_ship_info)
     
 def confirm_info(request):
-    return confirm.credit_confirm_info(request, config_get_group('PAYMENT_CYBERSOURCE'))
+    return confirm.payment_confirm_info(request, config_get_group('PAYMENT_CYBERSOURCE'))
 confirm_info = never_cache(confirm_info)
