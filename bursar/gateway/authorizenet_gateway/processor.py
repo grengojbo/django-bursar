@@ -449,7 +449,7 @@ class PaymentProcessor(BasePaymentProcessor):
         """Post one subscription request."""
         self.log_extra('Processing subscription: %s', data['product'].slug)
         
-        t = loader.get_template('shop/checkout/authorizenet/arb_create_subscription.xml')
+        t = loader.get_template('bursar/gateway/authorizenet_gateway/arb_create_subscription.xml')
         ctx = Context(data)
         request = t.render(ctx)
         

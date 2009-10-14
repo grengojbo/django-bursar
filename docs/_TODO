@@ -1,2 +1,14 @@
 * Fix the OrderStatus stuff in bursar.models - should go in the adapter?
+* Gateways Complete:
+	authorizenet
+	autosuccess
+	cod
+	dummy
+	purchase order
 
+
+Satchmo Changes
+---------------
+
+template moves:
+payment/paypal -> payment/paypal

@@ -14,9 +14,9 @@ log = logging.getLogger('protx.views')
 def pay_ship_info(request):
     return payship.credit_pay_ship_info(request, 
             config_get_group('PAYMENT_PROTX'),
-            template="shop/checkout/protx/pay_ship.html")
+            template="payment/protx/pay_ship.html")
     
-def confirm_info(request, template='shop/checkout/protx/confirm.html', extra_context={}):
+def confirm_info(request, template='payment/protx/confirm.html', extra_context={}):
     payment_module = config_get_group('PAYMENT_PROTX')
     controller = confirm.ConfirmController(request, payment_module)
     controller.templates['CONFIRM'] = template
@@ -25,8 +25,8 @@ def confirm_info(request, template='shop/checkout/protx/confirm.html', extra_con
     controller.confirm()
     return controller.response
             
-def confirm_secure3d(request, secure3d_template='shop/checkout/secure3d_form.html', 
-    confirm_template='shop/checkout/confirm.html', extra_context={}):
+def confirm_secure3d(request, secure3d_template='payment/secure3d_form.html', 
+    confirm_template='payment/confirm.html', extra_context={}):
     """Handles confirming an order and processing the charges when secured by secure3d.
  
     """

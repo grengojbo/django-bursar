@@ -59,7 +59,7 @@ class GoogleCart(object):
 
 @never_cache
 def pay_ship_info(request):
-    return payship.simple_pay_ship_info(request, config_get_group('PAYMENT_GOOGLE'), 'shop/checkout/google/pay_ship.html')
+    return payship.simple_pay_ship_info(request, config_get_group('PAYMENT_GOOGLE'), 'payment/google/pay_ship.html')
 
 @never_cache
 def confirm_info(request):
@@ -134,5 +134,5 @@ def success(request):
         
     del request.session['orderID']
     context = RequestContext(request, {'order': order})
-    return render_to_response('shop/checkout/success.html', context)
+    return render_to_response('payment/success.html', context)
 

@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+"""Bursar Purchase Order Gateway Tests."""
 from bursar.gateway.purchaseorder_gateway import processor
 from bursar.models import Authorization, Payment
 from bursar.tests import make_test_purchase

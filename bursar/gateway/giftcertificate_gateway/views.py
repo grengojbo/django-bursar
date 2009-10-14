@@ -45,9 +45,9 @@ def pay_ship_info(request):
     return payship.base_pay_ship_info(request, 
         gc, 
         giftcert_pay_ship_process_form,
-        template="shop/checkout/giftcertificate/pay_ship.html")
+        template="payment/giftcertificate/pay_ship.html")
     
-def confirm_info(request, template="shop/checkout/giftcertificate/confirm.html"):
+def confirm_info(request, template="payment/giftcertificate/confirm.html"):
     try:
         order = Order.objects.get(id=request.session['orderID'])
         giftcert = GiftCertificate.objects.from_order(order)

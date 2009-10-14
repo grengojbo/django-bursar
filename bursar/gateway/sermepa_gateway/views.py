@@ -37,7 +37,7 @@ def pay_ship_info(request):
     return payship.base_pay_ship_info(
             request,
             config_get_group('PAYMENT_SERMEPA'), payship.simple_pay_ship_process_form,
-            'shop/checkout/sermepa/pay_ship.html'
+            'payment/sermepa/pay_ship.html'
             )
 pay_ship_info = never_cache(pay_ship_info)
 
@@ -60,7 +60,7 @@ def confirm_info(request):
 
     tempCart = Cart.objects.from_request(request)
     if tempCart.numItems == 0:
-        template = lookup_template(payment_module, 'shop/checkout/empty_cart.html')
+        template = lookup_template(payment_module, 'payment/empty_cart.html')
         return render_to_response(template, RequestContext(request))
 
     # Check if the order is still valid
@@ -111,7 +111,7 @@ def confirm_info(request):
 
     signature = sha1(signature_data).hexdigest()
 
-    template = lookup_template(payment_module, 'shop/checkout/sermepa/confirm.html')
+    template = lookup_template(payment_module, 'payment/sermepa/confirm.html')
 
     url_callback = _resolve_local_url(payment_module, payment_module.MERCHANT_URL_CALLBACK, ssl=payment_module.SSL.value)
     url_ok = _resolve_local_url(payment_module, payment_module.MERCHANT_URL_OK)

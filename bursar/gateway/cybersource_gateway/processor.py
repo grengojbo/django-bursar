@@ -121,7 +121,7 @@ class PaymentProcessor(BasePaymentProcessor):
             invoice = "%s_%i" % (invoice, failct)
         
         # XML format is very simple, using ElementTree for generation would be overkill
-        t = loader.get_template('shop/checkout/cybersource/request.xml')
+        t = loader.get_template('payment/cybersource/request.xml')
         c = Context({
             'config' : self.configuration,
             'merchantReferenceCode' : invoice,

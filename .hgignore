@@ -18,3 +18,4 @@ build
 *.egg-info
 satchmo
 local_bursar_*py
+.DS_Store

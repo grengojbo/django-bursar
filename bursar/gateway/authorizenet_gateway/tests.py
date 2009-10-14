@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-"""Bursar Dummy Gateway Tests."""
+"""Bursar Authorizenet Gateway Tests."""
 from bursar.gateway.authorizenet_gateway import processor
 from bursar.errors import GatewayError
 from bursar.models import Authorization, Payment
