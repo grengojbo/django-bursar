@@ -203,7 +203,7 @@ class PaymentFailure(PaymentBase):
     purchase = models.ForeignKey('Purchase', null=True, blank=True, related_name='paymentfailures')
 
 class PaymentNote(models.Model):
-    payment = models.ForeignKey(_('Payment'), related_name="notes")
+    payment = models.ForeignKey(Payment, related_name="notes")
     note = models.TextField(_('Note'))
 
 class PaymentPending(PaymentBase):

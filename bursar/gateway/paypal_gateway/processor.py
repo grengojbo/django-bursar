@@ -1,4 +1,6 @@
+from bursar.errors import GatewayError
 from bursar.gateway.base import HeadlessPaymentProcessor
+from django.utils.translation import ugettext as _
 
 class PaymentProcessor(HeadlessPaymentProcessor):
 
@@ -12,13 +14,13 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             'EXTRA_LOGGING' : False,
             }
         working_settings.update(settings)
-        if not 'LOGIN' in working_settings:
-            raise GatewayError('You must define a LOGIN for the PAYPAL payment module.')
+        if working_settings['LIVE']:
+            for key in ("POST_URL", "BUSINESS"):
+                if not key in working_settings and working_settings[key]:
+                    raise GatewayError('Paypal processor needs a %s in its settings.' % key)
+        else:
+            for key in ("POST_TEST_URL", "BUSINESS_TEST"):
+                if not key in working_settings and working_settings[key]:
+                    raise GatewayError('Paypal processor needs a %s in its settings.' % key)
 
-        if not 'STORE_NAME' in working_settings:
-            raise GatewayError('You must define a STORE_NAME for the PAYPAL payment module.')
-
-        if not 'TRANKEY' in working_settings:
-            raise GatewayError('You must provide a TRANKEY for the PAYPAL payment module.')
-            
         super(PaymentProcessor, self).__init__('paypal', working_settings)

@@ -17,8 +17,8 @@ def pay_ship_info(request):
             template="payment/protx/pay_ship.html")
     
 def confirm_info(request, template='payment/protx/confirm.html', extra_context={}):
-    payment_module = config_get_group('PAYMENT_PROTX')
-    controller = confirm.ConfirmController(request, payment_module)
+    gateway_settings = config_get_group('PAYMENT_PROTX')
+    controller = confirm.ConfirmController(request, gateway_settings)
     controller.templates['CONFIRM'] = template
     controller.extra_context = extra_context
     controller.onForm = secure3d_form_handler
@@ -30,8 +30,8 @@ def confirm_secure3d(request, secure3d_template='payment/secure3d_form.html',
     """Handles confirming an order and processing the charges when secured by secure3d.
  
     """
-    payment_module = config_get_group('PAYMENT_PROTX')
-    controller = confirm.ConfirmController(request, payment_module, extra_context=extra_context)
+    gateway_settings = config_get_group('PAYMENT_PROTX')
+    controller = confirm.ConfirmController(request, gateway_settings, extra_context=extra_context)
     controller.template['CONFIRM'] = confirm_template
     if not controller.sanity_check():
         return controller.response
@@ -44,7 +44,7 @@ def confirm_secure3d(request, secure3d_template='payment/secure3d_form.html',
         if request.method == "POST":
             returnMD = request.POST.get('MD', None)
             if not returnMD:
-                template = lookup_template(payment_module, secure3d_template)
+                template = lookup_template(gateway_settings, secure3d_template)
                 ctx = RequestContext(request, {'order': controller.order, 'auth': auth3d })
                 return render_to_response(template, ctx)
             
@@ -57,7 +57,7 @@ def confirm_secure3d(request, secure3d_template='payment/secure3d_form.html',
                 else:
                     controller.processorMessage = _('3D Secure transaction was not approved by payment gateway. Please contact us.')
         else:
-            template = lookup_template(payment_module, secure3d_template)
+            template = lookup_template(gateway_settings, secure3d_template)
             ctx =RequestContext(request, {
                 'order': controller.order, 'auth': auth3d 
                 })

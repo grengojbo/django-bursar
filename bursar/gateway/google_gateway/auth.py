@@ -12,15 +12,15 @@ def auth_required(request):
     return response
 
 def get_cred():
-    payment_module = config_get_group('PAYMENT_GOOGLE')
-    live = gateway_live(payment_module)
+    gateway_settings = config_get_group('PAYMENT_GOOGLE')
+    live = gateway_live(gateway_settings)
     # get key and value
     if live:
-        merchant_id = payment_module.MERCHANT_ID.value
-        merchant_key = payment_module.MERCHANT_KEY.value
+        merchant_id = gateway_settings.MERCHANT_ID.value
+        merchant_key = gateway_settings.MERCHANT_KEY.value
     else:
-        merchant_id = payment_module.MERCHANT_TEST_ID.value
-        merchant_key = payment_module.MERCHANT_TEST_KEY.value
+        merchant_id = gateway_settings.MERCHANT_TEST_ID.value
+        merchant_key = gateway_settings.MERCHANT_TEST_KEY.value
     
     return (merchant_id, merchant_key)
 
@@ -29,12 +29,12 @@ def get_url():
     Returns the urls needed
     """
     (merchant_id, merchant_key) = get_cred()
-    payment_module = config_get_group('PAYMENT_GOOGLE')
-    live = gateway_live(payment_module)
+    gateway_settings = config_get_group('PAYMENT_GOOGLE')
+    live = gateway_live(gateway_settings)
     if live:
-        url_template = payment_module.POST_URL.value
+        url_template = gateway_settings.POST_URL.value
     else:
-        url_template = payment_module.POST_TEST_URL.value
+        url_template = gateway_settings.POST_TEST_URL.value
     post_url = url_template % {'MERCHANT_ID' : merchant_id}
     return post_url
 

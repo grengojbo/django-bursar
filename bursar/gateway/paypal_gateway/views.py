@@ -21,7 +21,7 @@ def ipn(request, settings=None):
         url = settings['POST_URL']
         account = settings['BUSINESS']
     else:
-        log.debug("Test IPN on %s", payment_module.KEY.value)
+        log.debug("Test IPN on %s", gateway_settings.KEY.value)
         url = settings['POST_TEST_URL']
         account = settings['BUSINESS_TEST']
 

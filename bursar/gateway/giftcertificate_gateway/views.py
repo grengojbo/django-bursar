@@ -17,10 +17,10 @@ log = logging.getLogger("giftcertificate.views")
 
 gc = config_get_group('PAYMENT_GIFTCERTIFICATE')
     
-def giftcert_pay_ship_process_form(request, contact, working_cart, payment_module):
+def giftcert_pay_ship_process_form(request, contact, working_cart, gateway_settings):
     if request.method == "POST":
         new_data = request.POST.copy()
-        form = GiftCertPayShipForm(request, payment_module, new_data)
+        form = GiftCertPayShipForm(request, gateway_settings, new_data)
         if form.is_valid():
             data = form.cleaned_data
 
@@ -32,11 +32,11 @@ def giftcert_pay_ship_process_form(request, contact, working_cart, payment_modul
 
             url = None
             if not url:
-                url = lookup_url(payment_module, 'satchmo_checkout-step3')
+                url = lookup_url(gateway_settings, 'satchmo_checkout-step3')
                 
             return (True, http.HttpResponseRedirect(url))
     else:
-        form = GiftCertPayShipForm(request, payment_module)
+        form = GiftCertPayShipForm(request, gateway_settings)
 
     return (False, form)
 

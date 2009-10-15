@@ -25,9 +25,9 @@ class ProtxPayShipForm(CreditPayShipForm):
         self.requires_issue_number = REQUIRES_ISSUE_NUMBER
         self.fields['year_start'].choices = self.fields['year_expires'].choices
 
-    def save(self, request, cart, contact, payment_module):
+    def save(self, request, cart, contact, gateway_settings):
         """Save the order and the credit card details."""
-        super(ProtxPayShipForm, self).save(request, cart, contact, payment_module)
+        super(ProtxPayShipForm, self).save(request, cart, contact, gateway_settings)
         data = self.cleaned_data 
         log.debug("data: %s", data)                       
         card_holder=data.get('card_holder', '')

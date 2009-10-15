@@ -124,6 +124,7 @@ INSTALLED_APPS = (
     'payment.modules.cod',
     'payment.modules.dummy',
     'payment.modules.purchaseorder',
+    'payment.modules.paypal',
     #'payment.modules.purchaseorder',
     #'payment.modules.giftcertificate',
     #create-'satchmo_ext.wishlist',
@@ -138,6 +139,7 @@ INSTALLED_APPS = (
     #'debug_toolbar',
     'app_plugins',
     'tests.localsite',
+    'django_extensions'
 )
 
 AUTHENTICATION_BACKENDS = (

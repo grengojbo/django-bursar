@@ -39,7 +39,7 @@ TEMPLATE_DIRS = (
 
 DATABASE_ENGINE = 'sqlite3'
 DATABASE_NAME = os.path.join(DIRNAME, 'test.db')
-SECRET_KEY = 'EXAMPLE SECRET KEY'
+SECRET_KEY = '2d6bad268c243cb7ce1f62634d14f5e7'
 
 ##### For Email ########
 # If this isn't set in your settings file, you can set these here
@@ -63,6 +63,7 @@ ACCOUNT_ACTIVATION_DAYS = 7
 try:
     from local_bursar_settings import BURSAR_SETTINGS
 except ImportError:
+    print "Could not load local_bursar_settings"
     pass
 
 #Configure logging

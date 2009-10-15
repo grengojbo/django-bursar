@@ -22,8 +22,8 @@ import sha
 log = logging.getLogger("payment.modules.google.processor")
 
 class GoogleCart(object):
-    def __init__(self, order, payment_module, live):
-        self.settings = payment_module
+    def __init__(self, order, gateway_settings, live):
+        self.settings = gateway_settings
         self.cart_xml = self._cart_xml(order)
         self.signature = self._signature(live)
 
@@ -63,14 +63,14 @@ def pay_ship_info(request):
 
 @never_cache
 def confirm_info(request):
-    payment_module = config_get_group('PAYMENT_GOOGLE')
+    gateway_settings = config_get_group('PAYMENT_GOOGLE')
 
-    controller = confirm.ConfirmController(request, payment_module)
+    controller = confirm.ConfirmController(request, gateway_settings)
     if not controller.sanity_check():
         return controller.response
 
-    live = gateway_live(payment_module)
-    gcart = GoogleCart(controller.order, payment_module, live)
+    live = gateway_live(gateway_settings)
+    gcart = GoogleCart(controller.order, gateway_settings, live)
     log.debug("CART:\n%s", gcart.cart_xml)
         
     post_url = auth.get_url()

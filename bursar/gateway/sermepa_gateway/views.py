@@ -16,7 +16,7 @@ from django.shortcuts import render_to_response
 from django.views.decorators.cache import never_cache
 from django.template import RequestContext
 from livesettings import config_get_group, config_value 
-from payment.utils import get_processor_by_key
+from payment.utils import get_gateway_by_key
 from payment.views import payship
 from satchmo_store.shop.models import Order, Cart
 from satchmo_utils.dynamic import lookup_url, lookup_template
@@ -42,25 +42,25 @@ def pay_ship_info(request):
 pay_ship_info = never_cache(pay_ship_info)
 
 
-def _resolve_local_url(payment_module, cfgval, ssl=False):
+def _resolve_local_url(gateway_settings, cfgval, ssl=False):
     try:
-        return lookup_url(payment_module, cfgval.value, include_server=True, ssl=ssl)
+        return lookup_url(gateway_settings, cfgval.value, include_server=True, ssl=ssl)
     except urlresolvers.NoReverseMatch:
         return cfgval.value
 
 
 def confirm_info(request):
-    payment_module = config_get_group('PAYMENT_SERMEPA')
+    gateway_settings = config_get_group('PAYMENT_SERMEPA')
 
     try:
         order = Order.objects.from_request(request)
     except Order.DoesNotExist:
-        url = lookup_url(payment_module, 'satchmo_checkout-step1')
+        url = lookup_url(gateway_settings, 'satchmo_checkout-step1')
         return HttpResponseRedirect(url)
 
     tempCart = Cart.objects.from_request(request)
     if tempCart.numItems == 0:
-        template = lookup_template(payment_module, 'payment/empty_cart.html')
+        template = lookup_template(gateway_settings, 'payment/empty_cart.html')
         return render_to_response(template, RequestContext(request))
 
     # Check if the order is still valid
@@ -70,15 +70,15 @@ def confirm_info(request):
         return render_to_response('shop/404.html', context)
 
     # Check if we are in test or real mode
-    live = payment_module.LIVE.value
+    live = gateway_settings.LIVE.value
     if live:
-        post_url = payment_module.POST_URL.value
-        signature_code = payment_module.MERCHANT_SIGNATURE_CODE.value
-        terminal = payment_module.MERCHANT_TERMINAL.value
+        post_url = gateway_settings.POST_URL.value
+        signature_code = gateway_settings.MERCHANT_SIGNATURE_CODE.value
+        terminal = gateway_settings.MERCHANT_TERMINAL.value
     else:
-        post_url = payment_module.POST_TEST_URL.value
-        signature_code = payment_module.MERCHANT_TEST_SIGNATURE_CODE.value
-        terminal = payment_module.MERCHANT_TEST_TERMINAL.value
+        post_url = gateway_settings.POST_TEST_URL.value
+        signature_code = gateway_settings.MERCHANT_TEST_SIGNATURE_CODE.value
+        terminal = gateway_settings.MERCHANT_TEST_TERMINAL.value
 
     # SERMEPA system does not accept multiple payment attempts with the same ID, even
     # if the previous one has never been finished. The worse is that it does not display
@@ -102,8 +102,8 @@ def confirm_info(request):
             map(str, (
                     amount,
                     xchg_order_id,
-                    payment_module.MERCHANT_FUC.value,
-                    payment_module.MERCHANT_CURRENCY.value,
+                    gateway_settings.MERCHANT_FUC.value,
+                    gateway_settings.MERCHANT_CURRENCY.value,
                     signature_code,
                     )
                )
@@ -111,19 +111,19 @@ def confirm_info(request):
 
     signature = sha1(signature_data).hexdigest()
 
-    template = lookup_template(payment_module, 'payment/sermepa/confirm.html')
+    template = lookup_template(gateway_settings, 'payment/sermepa/confirm.html')
 
-    url_callback = _resolve_local_url(payment_module, payment_module.MERCHANT_URL_CALLBACK, ssl=payment_module.SSL.value)
-    url_ok = _resolve_local_url(payment_module, payment_module.MERCHANT_URL_OK)
-    url_ko = _resolve_local_url(payment_module, payment_module.MERCHANT_URL_KO)
+    url_callback = _resolve_local_url(gateway_settings, gateway_settings.MERCHANT_URL_CALLBACK, ssl=gateway_settings.SSL.value)
+    url_ok = _resolve_local_url(gateway_settings, gateway_settings.MERCHANT_URL_OK)
+    url_ko = _resolve_local_url(gateway_settings, gateway_settings.MERCHANT_URL_KO)
 
     ctx = {
         'live': live,
         'post_url': post_url,
-        'MERCHANT_CURRENCY': payment_module.MERCHANT_CURRENCY.value,
-        'MERCHANT_FUC': payment_module.MERCHANT_FUC.value,
+        'MERCHANT_CURRENCY': gateway_settings.MERCHANT_CURRENCY.value,
+        'MERCHANT_FUC': gateway_settings.MERCHANT_FUC.value,
         'terminal': terminal,
-        'MERCHANT_TITULAR': payment_module.MERCHANT_TITULAR.value,
+        'MERCHANT_TITULAR': gateway_settings.MERCHANT_TITULAR.value,
         'url_callback': url_callback,
         'url_ok': url_ok,
         'url_ko': url_ko,
@@ -137,15 +137,15 @@ def confirm_info(request):
 confirm_info = never_cache(confirm_info)
 
 def notify_callback(request):
-    payment_module = config_get_group('PAYMENT_SERMEPA')
-    if payment_module.LIVE.value:
-        log.debug("Live IPN on %s", payment_module.KEY.value)
-        signature_code = payment_module.MERCHANT_SIGNATURE_CODE.value
-        terminal = payment_module.MERCHANT_TERMINAL.value
+    gateway_settings = config_get_group('PAYMENT_SERMEPA')
+    if gateway_settings.LIVE.value:
+        log.debug("Live IPN on %s", gateway_settings.KEY.value)
+        signature_code = gateway_settings.MERCHANT_SIGNATURE_CODE.value
+        terminal = gateway_settings.MERCHANT_TERMINAL.value
     else:
-        log.debug("Test IPN on %s", payment_module.KEY.value)
-        signature_code = payment_module.MERCHANT_TEST_SIGNATURE_CODE.value
-        terminal = payment_module.MERCHANT_TEST_TERMINAL.value
+        log.debug("Test IPN on %s", gateway_settings.KEY.value)
+        signature_code = gateway_settings.MERCHANT_TEST_SIGNATURE_CODE.value
+        terminal = gateway_settings.MERCHANT_TEST_TERMINAL.value
     data = request.POST
     log.debug("Transaction data: " + repr(data))
     try:
@@ -161,7 +161,7 @@ def notify_callback(request):
         if sig_calc != data['Ds_Signature'].lower():
             log.error("Invalid signature. Received '%s', calculated '%s'." % (data['Ds_Signature'], sig_calc))
             return HttpResponseBadRequest("Checksum error")
-        if data['Ds_MerchantCode'] != payment_module.MERCHANT_FUC.value:
+        if data['Ds_MerchantCode'] != gateway_settings.MERCHANT_FUC.value:
             log.error("Invalid FUC code: %s" % data['Ds_MerchantCode'])
             return HttpResponseNotFound("Unknown FUC code")
         if int(data['Ds_Terminal']) != int(terminal):
@@ -189,7 +189,7 @@ def notify_callback(request):
         return HttpResponseBadRequest("Incomplete data")
     # success
     order.add_status(status='New', notes=u"Paid through SERMEPA.")
-    processor = get_processor_by_key('PAYMENT_SERMEPA')
+    processor = get_gateway_by_key('PAYMENT_SERMEPA')
     payment = processor.record_payment(
         order=order, 
         amount=amount, 

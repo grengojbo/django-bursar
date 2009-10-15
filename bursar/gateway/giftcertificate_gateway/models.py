@@ -7,7 +7,7 @@ from django.utils.translation import ugettext_lazy as _
 from l10n.utils import moneyfmt
 from livesettings import config_value
 from bursar.gateway.giftcertificate.utils import generate_certificate_code
-from payment.utils import get_processor_by_key
+from payment.utils import get_gateway_by_key
 from product.models import Product
 from satchmo_store.contact.models import Contact
 from satchmo_store.shop.models import Payment, Order
@@ -66,7 +66,7 @@ class GiftCertificate(models.Model):
             order.id, 
             moneyfmt(order.balance))
             
-        processor = get_processor_by_key('PAYMENT_GIFTCERTIFICATE')
+        processor = get_gateway_by_key('PAYMENT_GIFTCERTIFICATE')
         payment = processor.record_payment(order=order, amount=amount)
         self.payment = payment
         return self.use(amount, payment=payment)
