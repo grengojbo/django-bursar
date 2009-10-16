@@ -9,6 +9,7 @@ from Crypto.Cipher import Blowfish
 from datetime import datetime
 from decimal import Decimal
 from django.conf import settings
+from django.contrib.sites.models import Site
 from django.db import models
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -242,6 +243,7 @@ class Purchase(models.Model):
     Collects information about an order and tracks
     its state.
     """
+    site = models.ForeignKey(Site, verbose_name=_('Site'))
     orderno = models.CharField(_("Order Number"), max_length=20)
     first_name = models.CharField(_("First name"), max_length=30)
     last_name = models.CharField(_("Last name"), max_length=30)
@@ -357,6 +359,9 @@ class Purchase(models.Model):
         """
         if not self.pk:
             self.time_stamp = datetime.now()
+        
+        if not self.site:
+            self.site = Site.objects.get_current()
         super(Purchase, self).save(**kwargs)
         
     @property
