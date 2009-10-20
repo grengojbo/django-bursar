@@ -14,7 +14,7 @@ DIRNAME = os.path.dirname(os.path.abspath(__file__))
 
 # for most "normal" projects, you should directly set the SATCHMO_DIRNAME, and skip the trick
 _parent = lambda x: os.path.normpath(os.path.join(x, '..'))
-SATCHMO_DIRNAME = os.path.join(_parent(_parent(DIRNAME)), 'satchmo/satchmo')
+SATCHMO_DIRNAME = os.path.join(_parent(_parent(_parent(DIRNAME))), 'satchmo/satchmo')
     
 # since we don't have any custom media for this project, lets just use Satchmo's
 MEDIA_ROOT = os.path.join(SATCHMO_DIRNAME, 'static/')

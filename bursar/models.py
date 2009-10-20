@@ -360,7 +360,11 @@ class Purchase(models.Model):
         if not self.pk:
             self.time_stamp = datetime.now()
         
-        if not self.site:
+        try:
+            site = self.site
+        except Site.DoesNotExist:
+            site = None
+        if not site:
             self.site = Site.objects.get_current()
         super(Purchase, self).save(**kwargs)
         

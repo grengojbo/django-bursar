@@ -8,7 +8,7 @@ from livesettings import config_get_group
 from satchmo_store.shop.models import Order, OrderStatus
 import logging
 
-log = logging.getLogger('payment.modules.base')
+log = logging.getLogger('bursar.gateway.base')
 
 NOTSET = object()
 
@@ -235,6 +235,7 @@ class PaymentRecorder(object):
         if self.pending:
             self.payment = self.pending.capture
             log.debug("Using linked payment: %s", self.payment)
+            self.payment.success = True
 
             if amount == NOTSET:
                 self.set_amount_from_pending()
@@ -243,7 +244,7 @@ class PaymentRecorder(object):
             log.debug("No pending %s payments for %s", self.key, self.purchase)
         
             self.payment = Payment(
-                purchase=self.purchase, 
+                purchase=self.purchase,
                 method=self.key,
                 success=True)
                 
@@ -286,9 +287,10 @@ class PaymentRecorder(object):
         self.payment.save()
 
         purchase = self.payment.purchase
-        
+
         signals.payment_complete.send(sender='bursar', purchase=self.purchase, payment=self.payment)
-                
+        log.debug('cleanup details: %s', self.payment)
+
     def create_pending(self, amount=NOTSET):
         """Create a placeholder payment entry for the purchase.  
         This is done by step 2 of the payment process."""
