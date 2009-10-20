@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+<h1>{% trans 'IPN Test Form' %}</h1>
+<p>{% blocktrans %}Enter the information for the PayPal payment for which you want to send a simulated IPN.{% endblocktrans %}</p>
+<form method="POST" action=".">
+	<table>
+		{{ form }}
+		<tr><td><input type="submit" value="{% trans 'Send it' %}"></td></tr>
+	</table>
+</form>
+{% endblock %}

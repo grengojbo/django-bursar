@@ -73,3 +73,46 @@ Traceback (most recent call last):
   File "/Library/Python/2.6/site-packages/pip-0.4-py2.6.egg/pip.py", line 3643, in call_subprocess
     % (command_desc, proc.returncode))
 InstallationError: Command /usr/bin/python -c "import setuptools; __file__='/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py'; execfile('/opt/webapps/venv/satchmo-bursar/lib/src/django-bursar/test/src/sorl-thumbnail/setup.py')" develop --no-deps failed with error code 1
+------------------------------------------------------------
+/opt/webapps/venv/satchmo-bursar/bin/pip run on Tue Oct 20 11:51:58 2009
+Downloading/unpacking pychecker
+  Getting page http://pypi.python.org/simple/pychecker
+  URLs to search for versions for pychecker:
+  * http://pypi.python.org/simple/pychecker/
+  Getting page http://pypi.python.org/simple/pychecker/
+  Getting page http://pychecker.sourceforge.net/
+  Analyzing links from page http://pypi.python.org/simple/PyChecker
+    Skipping link http://pychecker.sourceforge.net/ (from http://pypi.python.org/simple/PyChecker); not a file
+  Analyzing links from page http://pychecker.sourceforge.net/
+    Skipping link http://www.python.org (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://www.unixreview.com/documents/s=2426/uni1018986621203/0204h.htm (from http://pychecker.sourceforge.net/); unknown archive format: .htm
+    Skipping link http://www.unixreview.com (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.sourceforge.net/#import (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/pycheckrc?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link https://sourceforge.net/tracker/?atid=382217&group_id=24686&func=browse (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/VERSION?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://sourceforge.net/project/showfiles.php?group_id=24686 (from http://pychecker.sourceforge.net/); unknown archive format: .php
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/NEWS?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/ChangeLog?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/TODO?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/KNOWN_BUGS?pathrev=current&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.sourceforge.net/COPYRIGHT (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/NEWS?pathrev=HEAD&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/ChangeLog?pathrev=HEAD&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/TODO?pathrev=HEAD&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://pychecker.cvs.sourceforge.net/pychecker/pychecker/KNOWN_BUGS?pathrev=HEAD&view=markup (from http://pychecker.sourceforge.net/); not a file
+    Skipping link http://sf.net/projects/pychecker (from http://pychecker.sourceforge.net/); not a file
+    Skipping link mailto:pychecker-list@lists.sourceforge.net (from http://pychecker.sourceforge.net/); unknown archive format: .net
+  Could not find any downloads that satisfy the requirement pychecker
+No distributions at all found for pychecker
+Exception information:
+Traceback (most recent call last):
+  File "/opt/webapps/venv/satchmo-bursar/lib/python2.6/site-packages/pip-0.5.1-py2.6.egg/pip.py", line 295, in main
+    self.run(options, args)
+  File "/opt/webapps/venv/satchmo-bursar/lib/python2.6/site-packages/pip-0.5.1-py2.6.egg/pip.py", line 479, in run
+    requirement_set.install_files(finder, force_root_egg_info=self.bundle)
+  File "/opt/webapps/venv/satchmo-bursar/lib/python2.6/site-packages/pip-0.5.1-py2.6.egg/pip.py", line 1961, in install_files
+    url = finder.find_requirement(req_to_install, upgrade=self.upgrade)
+  File "/opt/webapps/venv/satchmo-bursar/lib/python2.6/site-packages/pip-0.5.1-py2.6.egg/pip.py", line 1146, in find_requirement
+    raise DistributionNotFound('No distributions at all found for %s' % req)
+DistributionNotFound: No distributions at all found for pychecker

@@ -79,4 +79,3 @@ admin.site.register(Purchase, PurchaseOptions)
 admin.site.register(Payment, PaymentOptions)
 import logging
 log = logging.getLogger('bursar.admin')
-log.debug('registered admin for Bursar')

@@ -23,7 +23,7 @@ class TestGateway(TestCase):
         global SKIP_TESTS
         self.client = Client()
         if not SKIP_TESTS:
-            settings = get_bursar_setting('PAYPAL_TEST', default_value=None)
+            settings = get_bursar_setting('PAYPAL_TEST', default_value={})
             settings['EXTRA_LOGGING'] = True
             if not settings:
                 SKIP_TESTS = True
