@@ -14,6 +14,8 @@ be returned after a successful purchase.  In Satchmo, this is "PAYPAL_satchmo_ch
 from bursar.errors import GatewayError
 from bursar.gateway.base import HeadlessPaymentProcessor
 from bursar.models import Payment, Purchase
+from django.contrib.sites.models import Site
+from django.core import urlresolvers
 from django.utils.http import urlencode
 from django.utils.translation import ugettext as _
 import urllib2
@@ -38,6 +40,9 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             
             # Accept real payments
             'LIVE' : False,
+            
+            # use SSL for checkout
+            'SSL' : False,
             
             'LABEL' : _('PayPal'),
             'EXTRA_LOGGING' : False,
@@ -113,4 +118,85 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         self.log.info("PayPal IPN data verification failed.")
         self.log_extra("HTTP code %s, response text: '%s'" % (fo.code, ret))
         return False
+
+
+    @property
+    def ipn_url(self):
+        prefix = "http"
+        if self.settings['SSL']:
+            prefix += "s"
+        base = prefix + "://" + Site.objects.get_current().domain
+
+        view_url = urlresolvers.reverse('PAYPAL_GATEWAY_ipn')
+        if base.endswith("/"):
+            base = base[:-1]
+        if view_url.startswith('/'):
+            view_url = view_url[1:]
+
+        url = base + '/' + view_url
+        self.log.debug('IPN URL=%s', url)
+        return url
+        
+    def submit_url(self):
+        if self.is_live():
+            url = self.settings['POST_URL']
+        else:
+            url = self.settings['POST_TEST_URL']
+        return url
+
+
+    def prepare_submit_form(self, purchase):
+        """Get a dictionary of information needed to submit to PayPal.
+        """
+        live = self.is_live()
+        pp = self.settings
+        if live:
+            self.log_extra("live purchase on %s", self.key)
+            account = pp['BUSINESS']
+        else:
+            account = pp['BUSINESS_TEST']
+
+        address = pp['RETURN_ADDRESS']
+
+        recurring = None
+        for item in purchase.lineitems.all():
+            if item.is_recurring:
+                recur = item.recurdetails
+                detail = {
+                    'product': item.name, 
+                    'price': recur.recurring_price,
+                    'expire_length' : recur.expire_length,
+                    'expire_unit' : recur.expire_unit,
+                    'recurring_times' : recur.recurring_times,
+                }
+                if recur.trial:
+                    detail['trial1'] = {'price' : recur.recurring_price}
+                    detail['trial1']['expire_length'] = recur.trial_length
+                    detail['trial1']['expire_unit'] = recur.expire_unit
+
+                    if recur.trial_times > 1:
+                        if trial1 is not None:
+                            detail['trial2'] = {'price' : recur.recurring_price}
+                            detail['trial2']['expire_length'] = recur.trial_length
+                            detail['trial2']['expire_unit'] = recur.expire_unit
+                            
+                if recurring:
+                    self.log.warn("Cannot have more than one subscription in one order for paypal.  Only processing the last one for %s", purchase)
+                recurring = detail
+
+        ipn_url = self.ipn_url
+
+        base_env = {
+            'purchase': purchase,
+            'business': account,
+            'currency_code': pp['CURRENCY_CODE'],
+            'return_address': address,
+            'invoice': purchase.id,
+            'subscription': recurring,
+            'gateway_live' : live,
+            'ipn_url' : ipn_url
+        }
+
+        return base_env
+
 

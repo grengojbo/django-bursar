@@ -7,7 +7,7 @@ from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField, Currenc
 from bursar.bursar_settings import get_bursar_setting
 from Crypto.Cipher import Blowfish
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_UP
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.db import models
@@ -317,7 +317,12 @@ class Purchase(models.Model):
         elif raises:
             raise PaymentPending.DoesNotExist(method)
         return None
-            
+        
+    @property
+    def partially_paid():
+        remaining = self.remaining
+        return remaining > 0 and remaining < self.total
+
     def recalc(self):
         if self.lineitems.count() > 0:
             subtotal = Decimal('0.00')
@@ -413,6 +418,10 @@ class LineItem(models.Model):
     class Meta:
         ordering = ('ordering',)
         
+    @property
+    def int_quantity(self):
+        return self.quantity.quantize(Decimal('1'), ROUND_UP)
+
     @property
     def is_recurring(self):
         recur = False
