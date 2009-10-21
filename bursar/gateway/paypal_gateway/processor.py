@@ -170,13 +170,13 @@ class PaymentProcessor(HeadlessPaymentProcessor):
                     'recurring_times' : recur.recurring_times,
                 }
                 if recur.trial:
-                    detail['trial1'] = {'price' : recur.recurring_price}
+                    detail['trial1'] = {'price' : recur.trial_price}
                     detail['trial1']['expire_length'] = recur.trial_length
                     detail['trial1']['expire_unit'] = recur.expire_unit
 
                     if recur.trial_times > 1:
                         if trial1 is not None:
-                            detail['trial2'] = {'price' : recur.recurring_price}
+                            detail['trial2'] = {'price' : recur.trial_price}
                             detail['trial2']['expire_length'] = recur.trial_length
                             detail['trial2']['expire_unit'] = recur.expire_unit
                             

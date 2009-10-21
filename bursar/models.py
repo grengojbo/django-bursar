@@ -463,6 +463,8 @@ class RecurringLineItem(models.Model):
         help_text=_("Length of each billing cycle"), 
         null=True, blank=True)
     trial = models.BooleanField(_("Trial?"), default=False)
+    trial_price = CurrencyField("Trial Price", default=Decimal('0.00'),
+        max_digits=18, decimal_places=2)
     trial_length = models.PositiveIntegerField(_("Trial length"),
         help_text="Number of subscription units for the trial",
         default=0)

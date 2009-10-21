@@ -1,11 +1,8 @@
 from bursar import signals
-from bursar.fields import CurrencyField
 from bursar.models import Authorization, Payment, PaymentFailure, PaymentPending, Purchase
 from datetime import datetime
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
-from livesettings import config_get_group
-from satchmo_store.shop.models import Order, OrderStatus
 import logging
 
 log = logging.getLogger('bursar.gateway.base')

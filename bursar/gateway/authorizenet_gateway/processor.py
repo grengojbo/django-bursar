@@ -6,8 +6,6 @@ from decimal import Decimal
 from django.template import loader, Context
 from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
-from satchmo_store.shop.models import Config
-from tax.utils import get_tax_processor
 from xml.dom import minidom
 import random
 import urllib2
@@ -310,11 +308,10 @@ class PaymentProcessor(BasePaymentProcessor):
                 occurrences = 9999
 
             subtrans['occurrences'] = subscription.recurring_times
-            subtrans['trial'] = subscription.trial
-            subtrans['trial_amount'] = trial_amount
-            subtrans['trial_occurrences'] = trial_occurrances
+            subtrans['trial_amount'] = subscription.trial_price
+            subtrans['trial_occurrences'] = trial_occurrences
             subtrans['amount'] = trunc_decimal(amount, 2)
-            if trial:
+            if amount > Decimal('0.00'):
                 charged_today = trial_amount
             else:
                 charged_today = amount
