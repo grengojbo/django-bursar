@@ -114,16 +114,18 @@ INSTALLED_APPS = (
     'bursar',
     'payment',
     'bursar.gateway.authorizenet_gateway',
-    'bursar.gateway.autosuccess_gateway',
-    'bursar.gateway.cod_gateway',
-    'bursar.gateway.dummy_gateway',
-    'bursar.gateway.purchaseorder_gateway',
-    'bursar.gateway.paypal_gateway',
     'payment.modules.authorizenet',
+    'bursar.gateway.autosuccess_gateway',
     'payment.modules.autosuccess',
+    'bursar.gateway.cod_gateway',
     'payment.modules.cod',
+    'bursar.gateway.cybersource_gateway',
+    'payment.modules.cybersource',
+    'bursar.gateway.dummy_gateway',
     'payment.modules.dummy',
+    'bursar.gateway.purchaseorder_gateway',
     'payment.modules.purchaseorder',
+    'bursar.gateway.paypal_gateway',
     'payment.modules.paypal',
     #'payment.modules.purchaseorder',
     #'payment.modules.giftcertificate',
@@ -147,9 +149,9 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 
-#DEBUG_TOOLBAR_CONFIG = {
-#    'INTERCEPT_REDIRECTS' : False,
-#}
+DEBUG_TOOLBAR_CONFIG = {
+   'INTERCEPT_REDIRECTS' : False,
+}
 
 #### Satchmo unique variables ####
 #from django.conf.urls.defaults import patterns, include
@@ -158,6 +160,8 @@ SATCHMO_SETTINGS = {
     'MULTISHOP' : False,
     #'SHOP_URLS' : patterns('satchmo_store.shop.views',)
 }
+
+# Bursar payment system settings should go here, for an example, look at local_bursar_settings_customize.py
 
 # Load the local settings
 from local_settings import *

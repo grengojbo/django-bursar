@@ -47,20 +47,14 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             'LABEL' : _('PayPal'),
             'EXTRA_LOGGING' : False,
             }
-        working_settings.update(settings)
-        if working_settings['LIVE']:
-            for key in ("POST_URL", "BUSINESS"):
-                if not key in working_settings and working_settings[key]:
-                    raise GatewayError('Paypal processor needs a %s in its settings.' % key)
-        else:
-            for key in ("POST_TEST_URL", "BUSINESS_TEST"):
-                if not key in working_settings and working_settings[key]:
-                    raise GatewayError('Paypal processor needs a %s in its settings.' % key)
-                    
-        if not working_settings.get('RETURN_ADDRESS', ''):
-            self.log.warn('RETURN_ADDRESS should be specified in your Paypal settings.')
+        working_settings.update(settings)                    
 
         super(PaymentProcessor, self).__init__('paypal', working_settings)
+        if self.is_live():
+            self.require_settings("POST_URL", "BUSINESS", "RETURN_ADDRESS")
+        else:
+            self.require_settings("POST_TEST_URL", "BUSINESS_TEST", "RETURN_ADDRESS")
+    
 
     def accept_ipn(self, invoice, amount, transaction_id, note=""):
         """Mark a PayPal payment as successfully paid - due to a successful IPN confirmation."""

@@ -10,11 +10,8 @@ class PaymentProcessor(BasePaymentProcessor):
     """
     def __init__(self, settings={}):
         working_settings = {
-            'SSL': False,
             'LIVE': False,
             'LABEL': _('Payment Autosuccess Module'),
-            'CAPTURE': True,
-            'AUTH_EARLY': False,
             'EXTRA_LOGGING': False,
         }
         working_settings.update(settings)

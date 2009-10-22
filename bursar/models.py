@@ -34,14 +34,6 @@ class PaymentBase(models.Model):
     details = models.CharField(_("Details"), max_length=255, blank=True, null=True)
     reason_code = models.CharField(_('Reason Code'),  max_length=255, blank=True, null=True)
 
-    @property
-    def _credit_card(self):
-        """Return the credit card associated with this payment."""
-        try:
-            return self.creditcard
-        except CreditCardDetail.DoesNotExist:
-            return None
-
     def save(self, force_insert=False, force_update=False):
         if not self.pk:
             self.time_stamp = datetime.now()

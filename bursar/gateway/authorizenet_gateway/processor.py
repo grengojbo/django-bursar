@@ -39,44 +39,34 @@ class PaymentProcessor(BasePaymentProcessor):
             4222222222222 to force a bad credit card response.  If you use that number 
             and a ccv of 222, that will force a bad ccv response from authorize.net
         LOGIN: (REQUIRED) Your authorize.net transaction login
-        MODULE: Implementation module, fully qualified.
         SIMULATE: Force a test post?
-        SSL: Use SSL for the checkout pages?
         STORE_NAME: (REQUIRED) The name of your store
         TRANKEY : (REQUIRED) Your authorize.net transaction key
-        URL_BASE: The url base used for constructing urlpatterns which will use this module        
     """
     def __init__(self, settings={}):
         working_settings = {
             'CONNECTION' : 'https://secure.authorize.net/gateway/transact.dll',
             'CONNECTION_TEST' : 'https://test.authorize.net/gateway/transact.dll',
-            'SSL' : False,
             'LIVE' : False,
             'SIMULATE' : False,
-            'MODULE' : 'payment.modules.authorizenet',
             'LABEL' : _('Credit Cards'),
-            'URL_BASE': r'^credit/',
             'CREDITCHOICES': (
                 (('Visa','Visa')),
                 (('Mastercard','Mastercard')),
-                (('Discover','Discover'))),
+                (('Discover','Discover')),
+                (('American Express', 'American Express'))
+            ),
             'CAPTURE' : True,
             'EXTRA_LOGGING' : False,
             'ARB' : False,
             'ARB_CONNECTION' : 'https://api.authorize.net/xml/v1/request.api',
-            'ARB_CONNECTION_TEST' : 'https://apitest.authorize.net/xml/v1/request.api'
+            'ARB_CONNECTION_TEST' : 'https://apitest.authorize.net/xml/v1/request.api',
+            'STORE_NAME' : "",
+            'TRANKEY' : "",
             }
-        working_settings.update(settings)
-        if not 'LOGIN' in working_settings:
-            raise GatewayError('You must define a LOGIN for the AUTHORIZENET payment module.')
-
-        if not 'STORE_NAME' in working_settings:
-            raise GatewayError('You must define a STORE_NAME for the AUTHORIZENET payment module.')
-
-        if not 'TRANKEY' in working_settings:
-            raise GatewayError('You must provide a TRANKEY for the AUTHORIZENET payment module.')
-            
+        working_settings.update(settings)            
         super(PaymentProcessor, self).__init__('authorizenet', working_settings)
+        self.require_settings('LOGIN', 'STORE_NAME', 'TRANKEY')
 
     def authorize_payment(self, purchase=None, amount=NOTSET, testing=False):
         """Authorize a single payment.
@@ -555,60 +545,3 @@ class PaymentProcessor(BasePaymentProcessor):
 
         self.log_extra("Returning success=%s, reason=%s, response_text=%s", success, reason_code, response_text)
         return ProcessorResult(self.key, success, response_text, payment=payment)
-
-if __name__ == "__main__":
-    """
-    This is for testing - enabling you to run from the command line and make
-    sure everything is ok
-    """
-    import os
-    from livesettings import config_get_group
-
-    # Set up some dummy classes to mimic classes being passed through Satchmo
-    class testContact(object):
-        pass
-    class testCC(object):
-        pass
-    class testOrder(object):
-        def __init__(self):
-            self.contact = testContact()
-            self.credit_card = testCC()
-        def order_success(self):
-            pass
-
-    if not os.environ.has_key("DJANGO_SETTINGS_MODULE"):
-        os.environ["DJANGO_SETTINGS_MODULE"]="satchmo_store.settings"
-
-    settings_module = os.environ['DJANGO_SETTINGS_MODULE']
-    settingsl = settings_module.split('.')
-    settings = __import__(settings_module, {}, {}, settingsl[-1])
-
-    sampleOrder = testOrder()
-    sampleOrder.contact.first_name = 'Chris'
-    sampleOrder.contact.last_name = 'Smith'
-    sampleOrder.contact.primary_phone = '801-555-9242'
-    sampleOrder.full_bill_street = '123 Main Street'
-    sampleOrder.bill_postal_code = '12345'
-    sampleOrder.bill_state = 'TN'
-    sampleOrder.bill_city = 'Some City'
-    sampleOrder.bill_country = 'US'
-    sampleOrder.total = "27.01"
-    sampleOrder.balance = "27.01"
-    sampleOrder.credit_card.decryptedCC = '6011000000000012'
-    sampleOrder.credit_card.expirationDate = "10/11"
-    sampleOrder.credit_card.ccv = "144"
-
-    from payment.tests import get_payment_settings
-    authorize_settings = get_payment_settings()
-    
-    config_get_group('PAYMENT_AUTHORIZENET')
-    if authorize_settings['LIVE']:
-        print "Warning.  You are submitting a live order.  AUTHORIZE.NET system is set LIVE."
-        
-    processor = PaymentProcessor(authorize_settings.dict_values())
-    processor.prepare_data(sampleOrder)
-    purchase = sampleOrder.get_or_create_purchase()
-    results = processor.process(testing=True, purchase=purchase)
-    print results
-
-

@@ -1,6 +1,7 @@
-from django.template import Context, loader
 from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
 from bursar.numbers import trunc_decimal
+from decimal import Decimal
+from django.template import Context, loader
 from django.utils.translation import ugettext_lazy as _
 
 import urllib2
@@ -54,74 +55,104 @@ class PaymentProcessor(BasePaymentProcessor):
     You must have an account with Cybersource in order to use this module
     
     """
-    def __init__(self, settings):
-        super(PaymentProcessor, self).__init__('cybersource', settings)
+    def __init__(self, settings={}):
+        
+        working_settings = {
+            #This is the address to submit live transactions
+            'CONNECTION': 'https://ics2ws.ic3.com/commerce/1.x/transactionProcessor/CyberSourceTransaction_1.26.wsdl',
+
+            #This is the address to submit test transactions
+            'CONNECTION_TEST': 'https://ics2wstest.ic3.com/commerce/1.x/transactionProcessor/CyberSourceTransaction_1.26.wsdl',
+
+            'LIVE': False,
+
+            'LABEL': _('This will be passed to the translation utility'),
+
+            'CURRENCY_CODE': 'USD',
+
+            'CREDITCHOICES': (
+                (('American Express', 'American Express')),
+                (('Visa','Visa')),
+                (('Mastercard','Mastercard')),
+                #(('Discover','Discover'))
+            ),
+
+            #Your Cybersource merchant ID - REQUIRED
+            'MERCHANT_ID': "",
+
+            #Your Cybersource transaction key - REQUIRED
+            'TRANKEY': "",
+
+            'EXTRA_LOGGING': False
+        }
+        
+        working_settings.update(settings)
+        super(PaymentProcessor, self).__init__('cybersource', working_settings)
+
+        self.require_settings('MERCHANT_ID', 'TRANKEY')
+        
         self.contents = ''
-        if settings.LIVE.value:
+        if self.is_live():
             self.testflag = 'FALSE'
-            self.connection = settings.CONNECTION.value
+            self.connection = self.settings['CONNECTION']
         else:
             self.testflag = 'TRUE'
-            self.connection = settings.CONNECTION_TEST.value
+            self.connection = self.settings['CONNECTION_TEST']
             
         self.configuration = {
-            'merchantID' : settings.MERCHANT_ID.value,
-            'password' : settings.TRANKEY.value,
-            }
+            'merchantID' : self.settings['MERCHANT_ID'],
+            'password' : self.settings['TRANKEY'],
+        }
 
-    def prepare_content(self, order, amount):
+    def prepare_content(self, purchase, amount):
         self.bill_to = {
-            'firstName' : order.contact.first_name,
-            'lastName' : order.contact.last_name,
-            'street1': order.full_bill_street,
-            'city': order.bill_city,
-            'state' : order.bill_state,
-            'postalCode' : order.bill_postal_code,
-            'country': order.bill_country,
-            'email' : order.contact.email,
-            'phoneNumber' : order.contact.primary_phone,
-            # Can add additional info here if you want to but it's not required
+            'firstName' : purchase.first_name,
+            'lastName' : purchase.last_name,
+            'street1': purchase.full_bill_street,
+            'city': purchase.bill_city,
+            'state' : purchase.bill_state,
+            'postalCode' : purchase.bill_postal_code,
+            'country': purchase.bill_country,
+            'email' : purchase.email,
+            'phoneNumber' : purchase.phone,
             }
-        exp = order.credit_card.expirationDate.split('/')
+        exp = purchase.credit_card.expirationDate.split('/')
         self.card = {
-            'accountNumber' : order.credit_card.decryptedCC,
+            'accountNumber' : purchase.credit_card.decryptedCC,
             'expirationMonth' : exp[0],
             'expirationYear' : exp[1],
-            'cvNumber' : order.credit_card.ccv
+            'cvNumber' : purchase.credit_card.ccv
             }
-        currency = self.settings.CURRENCY_CODE.value
+        currency = self.settings['CURRENCY_CODE']
         currency = currency.replace("_", "")
         self.purchase_totals = {
             'currency' : currency,
             'grandTotalAmount' : trunc_decimal(amount, 2),
         }
 
-    def capture_payment(self, testing=False, order=None, amount=NOTSET):
+    def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """
         Creates and sends XML representation of transaction to Cybersource
         """
-        if not order:
-            order = self.order
-            
-        if order.paid_in_full:
-            self.log_extra('%s is paid in full, no capture attempted.', order)
-            self.record_payment()
+        if purchase.remaining == Decimal('0.00'):
+            self.log_extra('%s is paid in full, no capture attempted.', purchase)
+            self.record_payment(purchase=purchase)
             return ProcessorResult(self.key, True, _("No charge needed, paid in full."))
 
-        self.log_extra('Capturing payment for %s', order)
+        self.log_extra('Capturing payment for %s', purchase)
 
         if amount==NOTSET:
-            amount = order.balance
+            amount = purchase.remaining
 
-        self.prepare_content(order, amount)
+        self.prepare_content(purchase, amount)
         
-        invoice = "%s" % order.id
-        failct = order.paymentfailures.count()
+        invoice = "%s" % purchase.id
+        failct = purchase.paymentfailures.count()
         if failct > 0:
             invoice = "%s_%i" % (invoice, failct)
         
         # XML format is very simple, using ElementTree for generation would be overkill
-        t = loader.get_template('payment/cybersource/request.xml')
+        t = loader.get_template('bursar/gateway/cybersource_gateway/request.xml')
         c = Context({
             'config' : self.configuration,
             'merchantReferenceCode' : invoice,
@@ -130,6 +161,7 @@ class PaymentProcessor(BasePaymentProcessor):
             'card' : self.card,
         })
         request = t.render(c)
+        self.log_extra("Cybersource request: %s", request)
         conn = urllib2.Request(url=self.connection, data=request)
         try:
             f = urllib2.urlopen(conn)
@@ -140,6 +172,7 @@ class PaymentProcessor(BasePaymentProcessor):
 
         f = urllib2.urlopen(conn)
         all_results = f.read()
+        self.log_extra("Cybersource response: %s", all_results)
         tree = fromstring(all_results)
         parsed_results = tree.getiterator('{urn:schemas-cybersource-com:transaction-data-1.26}reasonCode')
         try:
@@ -150,69 +183,13 @@ class PaymentProcessor(BasePaymentProcessor):
         response_text = CYBERSOURCE_RESPONSES.get(reason_code, 'Unknown Failure')
 
         if reason_code == '100':
-            payment = self.record_payment(order=order, amount=amount, 
+            self.log_extra('%s successfully charged', purchase)
+            payment = self.record_payment(purchase=purchase, amount=amount, 
                 transaction_id="", reason_code=reason_code)
             return ProcessorResult(self.key, True, response_text, payment=payment)
         else:
-            payment = self.record_failure(order=order, amount=amount, 
+            payment = self.record_failure(purchase=purchase, amount=amount, 
                 transaction_id="", reason_code=reason_code, 
                 details=response_text)
             
             return ProcessorResult(self.key, False, response_text)
-
-if __name__ == "__main__":
-    """
-    For testing purposes only.
-    Allows this module to be run as a script to test the connection
-    
-    """
-
-    import os
-    from livesettings import config_get_group
-
-    # Set up some dummy classes to mimic classes being passed through Satchmo
-    class testContact(object):
-        pass
-    class testCC(object):
-        pass
-    class testOrder(object):
-        def __init__(self):
-            self.contact = testContact()
-            self.credit_card = testCC()
-        def order_success(self):
-            pass
-
-    if not os.environ.has_key("DJANGO_SETTINGS_MODULE"):
-        os.environ["DJANGO_SETTINGS_MODULE"]="satchmo_store.settings"
-
-    settings_module = os.environ['DJANGO_SETTINGS_MODULE']
-    settingsl = settings_module.split('.')
-    settings = __import__(settings_module, {}, {}, settingsl[-1])
-
-    sampleOrder = testOrder()
-    sampleOrder.id = '1234'
-    sampleOrder.contact.first_name = 'Chris'
-    sampleOrder.contact.last_name = 'Smith'
-    sampleOrder.contact.primary_phone = '801-555-9242'
-    sampleOrder.contact.email = 'null@cybersource.com'
-    sampleOrder.full_bill_street = '123 Main Street'
-    sampleOrder.bill_postal_code = '12345'
-    sampleOrder.bill_state = 'TN'
-    sampleOrder.bill_city = 'Some City'
-    sampleOrder.bill_country = 'US'
-    sampleOrder.total = "27.00"
-    sampleOrder.balance = "27.00"
-    sampleOrder.credit_card.decryptedCC = '6011000000000012'
-    sampleOrder.credit_card.expirationDate = "10/09"
-    sampleOrder.credit_card.ccv = "144"
-
-    cybersource_settings = config_get_group('PAYMENT_CYBERSOURCE')
-    if cybersource_settings.LIVE.value:
-        print "Warning.  You are submitting a live order.  CYBERSOURCE system is set LIVE."
-        
-    processor = PaymentProcessor(cybersource_settings)
-    processor.prepare_data(sampleOrder)
-    results = processor.process(testing=True)
-    print results
-
-

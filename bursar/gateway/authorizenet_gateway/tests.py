@@ -24,10 +24,10 @@ class TestGateway(TestCase):
         self.client = Client()
         if not SKIP_TESTS:
             settings = get_bursar_setting('AUTHORIZENET_TEST', default_value=None)
-            settings['EXTRA_LOGGING'] = True
             if not settings:
                 SKIP_TESTS = True
                 raise GatewayError(NEED_SETTINGS)
+            settings['EXTRA_LOGGING'] = True
             self.gateway = processor.PaymentProcessor(settings=settings)
             self.default_payment = {
                 'ccv' : '111',

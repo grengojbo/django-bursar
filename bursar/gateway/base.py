@@ -1,4 +1,5 @@
 from bursar import signals
+from bursar.errors import GatewayError
 from bursar.models import Authorization, Payment, PaymentFailure, PaymentPending, Purchase
 from datetime import datetime
 from decimal import Decimal
@@ -154,6 +155,12 @@ class BasePaymentProcessor(object):
         """Release a previously authorized payment."""
         self.log.warn('Module does not implement released_authorized_payment: %s', self.key)
         return ProcessorResult(False, _("Not Implemented"))
+        
+    def require_settings(self, *args):
+        for arg in args:
+            val = self.settings.get(arg, None)
+            if not val:
+                raise GatewayError('You must define a %s for the %s payment module.' % (arg, self.key))
 
 class HeadlessPaymentProcessor(BasePaymentProcessor):
     """A payment processor which doesn't actually do any processing directly.
