@@ -67,6 +67,9 @@ BURSAR_SETTINGS = {
          'TRANKEY': "Ww/xasElmB5X5FTwYLH/Bnb8dXwNp+/aOogskyIApmZ2j0Ly0zl7fu2rE2Mla/8VyQJAUeS+YZ02M3obf2bhzsrIb7fEsH5ONBm6RXu/H9aXf/XxTvKu9af5Nnsi2a9bGwTl27giGdcpW9oSgX1jUryQ1zCCAnYCAQAwDQYJKob+qet4f8O2yLSzhwEBBQAEggJgMIICXAIBAAKBgQCV+GCZCP21UYPwoFSOFAir49ag658dFJOqAC+6qeZ51Nr9D1jEJLw6WF1hY6kk4BAZ3K9PptvTj3pG7NY3TmrKlmI3RbMKBYIUVrKnku91mBqDxJupmXZRSZ7i+2Zvl8oTHQ==",
          'EXTRA_LOGGING': True
      },
+     'PROTX_TEST' : {
+        'VENDOR' : 'TEST',
+     }
 }
 
 #Configure logging

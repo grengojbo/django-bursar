@@ -1,91 +1,113 @@
 """Prot/X Payment Gateway.
-
-To use this module, enable it in your shop configuration, usually at http:yourshop/settings/
-
-To override the connection urls specified below in `PROTX_DEFAULT_URLS, add a dictionary in 
-your settings.py file called "PROTX_URLS", mapping the keys below to the urls you need for 
-your store.  You only need to override the specific urls that have changed, the processor
-will fall back to the defaults for any not specified in your dictionary.
 """
-from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
 from bursar.gateway.base import BasePaymentProcessor, ProcessorResult, NOTSET
+from bursar.errors import GatewayError
 from bursar.numbers import trunc_decimal
+from decimal import Decimal
 from django.utils.http import urlencode
-import forms
+from django.utils.translation import ugettext_lazy as _
 import urllib2
 
 PROTOCOL = "2.22"
-
-PROTX_DEFAULT_URLS = {
-    'LIVE_CONNECTION' : 'https://ukvps.protx.com/vspgateway/service/vspdirect-register.vsp',
-    'LIVE_CALLBACK' : 'https://ukvps.protx.com/vspgateway/service/direct3dcallback.vsp',
-    'TEST_CONNECTION' : 'https://ukvpstest.protx.com/vspgateway/service/vspdirect-register.vsp',
-    'TEST_CALLBACK' : 'https://ukvpstest.protx.com/vspgateway/service/direct3dcallback.vsp',
-    'SIMULATOR_CONNECTION' : 'https://ukvpstest.protx.com/VSPSimulator/VSPDirectGateway.asp',
-    'SIMULATOR_CALLBACK' : 'https://ukvpstest.protx.com/VSPSimulator/VSPDirectCallback.asp'
-}
-
-FORM = forms.ProtxPayShipForm
 
 class PaymentProcessor(BasePaymentProcessor):
     packet = {}
     response = {}
     
-    def __init__(self, settings):
-        super(PaymentProcessor, self).__init__('Protx', settings)
+    def __init__(self, settings={}):
+        
+        working_settings = {
+            'LIVE_CONNECTION' : 'https://ukvps.protx.com/vspgateway/service/vspdirect-register.vsp',
+            'LIVE_CALLBACK' : 'https://ukvps.protx.com/vspgateway/service/direct3dcallback.vsp',
+            'TEST_CONNECTION' : 'https://ukvpstest.protx.com/vspgateway/service/vspdirect-register.vsp',
+            'TEST_CALLBACK' : 'https://ukvpstest.protx.com/vspgateway/service/direct3dcallback.vsp',
+            'SIMULATOR_CONNECTION' : 'https://ukvpstest.protx.com/VSPSimulator/VSPDirectGateway.asp',
+            'SIMULATOR_CALLBACK' : 'https://ukvpstest.protx.com/VSPSimulator/VSPDirectCallback.asp',
+            
+            'LIVE': False,
+            'SIMULATOR': False, # Simulated transaction flag - must be false to accept real payments.
+            'SKIP_POST': False, # For testing only, this will skip actually posting to Prot/x servers.  
+                                # This is because their servers restrict IPs of posting servers, even for tests.
+                                # If you are developing on a desktop, you'll have to enable this.
 
-        vendor = settings.VENDOR.value
-        if vendor == "":
-            self.log.warn('Prot/X Vendor is not set, please configure in your site configuration.')
-        if settings.SIMULATOR.value:
-            vendor = settings.VENDOR_SIMULATOR.value
-            if not vendor:
-                self.log.warn("You are trying to use the Prot/X VSP Simulator, but you don't have a vendor name in settings for the simulator.  I'm going to use the live vendor name, but that probably won't work.")
-                vendor = settings.VENDOR.value
+            'CAPTURE': "PAYMENT", # Should be "PAYMENT" or "DEFERRED", Note that you can only use the latter if
+                                  # you set that option on your Prot/X account first.
+            'LABEL': _('Prot/X Secure Payments'),
+            'CREDITCHOICES': (
+                        (('VISA','Visa Credit/Debit')),
+                        #(('UKE','Visa Electron')),
+                        #(('DELTA','Delta')),
+                        #(('AMEX','American Express')),  # not always available
+                        #(('DC','Diners Club')), # not always available
+                        (('MC','Mastercard')),
+                        #(('MAESTRO','UK Maestro')),
+                        #(('SOLO','Solo')),
+                        #(('JCB','JCB')),
+                    ),
+
+            'VENDOR': "", # REQUIRED, your vendor name. This is used for Live and Test transactions.  
+                         # Make sure to add your server IP address to VSP, or it won't work.
+
+            'VENDOR_SIMULATOR': "", # Simulator Vendor Name
+                                   # This is used for Live and Test transactions.  Make sure to activate
+                                   # the VSP Simulator (you have to directly request it) and add your
+                                   # server IP address to the VSP Simulator, or it won't work.")),
+
+            'CURRENCY_CODE': 'GBP',
+
+            'EXTRA_LOGGING': False,
+        }
+        working_settings.update(settings)            
+        super(PaymentProcessor, self).__init__('protx', working_settings)
+        self.require_settings('VENDOR')
+
+        if self.settings['SIMULATOR']:
+            try:
+                self.require_settings('VENDOR_SIMULATOR')
+            except GatewayError, ge:
+                self.log.warn("You are trying to use the Prot/X VSP Simulator, but you don't have a vendor name in settings for the simulator.")
+                raise ge
+                
+            vendor = self.settings['VENDOR_SIMULATOR']
+        else:
+            vendor = self.settings['VENDOR']
         
         self.packet = {
             'VPSProtocol': PROTOCOL,
-            'TxType': settings.CAPTURE.value,
+            'TxType': self.settings['CAPTURE'],
             'Vendor': vendor,
-            'Currency': settings.CURRENCY_CODE.value,
+            'Currency': self.settings['CURRENCY_CODE'],
             }
         self.valid = False
 
     def _url(self, key):
-        urls = PROTX_DEFAULT_URLS
-        if hasattr(settings, 'PROTX_URLS'):
-            urls.update(settings.PROTX_URLS)
-
-        if self.settings.SIMULATOR.value:
+        if self.settings['SIMULATOR']:
             key = "SIMULATOR_" + key
         else:
-            if self.settings.LIVE.value:
+            if self.is_live():
                 key = "LIVE_" + key
             else:
                 key = "TEST_" + key
-        return urls[key]
+        return self.settings[key]
 
-    def _connection(self):
+    @property
+    def connection(self):
         return self._url('CONNECTION')
-
-    connection = property(fget=_connection)        
         
-    def _callback(self):
+    @property
+    def callback(self):
         return self._url('CALLBACK')
-
-    callback = property(fget=_callback)
         
-    def prepare_post(self, data, amount):
+    def prepare_post(self, purchase, amount):
         
-        invoice = "%s" % data.id
-        failct = data.paymentfailures.count()
+        invoice = "%s" % purchase.id
+        failct = purchase.paymentfailures.count()
         if failct > 0:
             invoice = "%s_%i" % (invoice, failct)
         
         try:
-            cc = data.credit_card
-            balance = trunc_decimal(data.balance, 2)
+            cc = purchase.credit_card
+            balance = trunc_decimal(purchase.remaining, 2)
             self.packet['VendorTxCode'] = invoice
             self.packet['Amount'] = balance
             self.packet['Description'] = 'Online purchase'
@@ -99,11 +121,11 @@ class PaymentProcessor(BasePaymentProcessor):
                 self.packet['CV2'] = cc.ccv
             if cc.issue_num is not None and cc.issue_num != "":
                 self.packet['IssueNumber'] = cc.issue_num #'%02d' % int(cc.issue_num)
-            addr = [data.bill_street1, data.bill_street2, data.bill_city, data.bill_state]
+            addr = [purchase.bill_street1, purchase.bill_street2, purchase.bill_city, purchase.bill_state]
             self.packet['BillingAddress'] = ', '.join(addr)
-            self.packet['BillingPostCode'] = data.bill_postal_code
+            self.packet['BillingPostCode'] = purchase.bill_postal_code
         except Exception, e:
-            self.log.error('preparing data, got error: %s\nData: %s', e, data)
+            self.log.error('preparing data, got error: %s\nData: %s', e, purchase)
             self.valid = False
             return
             
@@ -127,27 +149,27 @@ class PaymentProcessor(BasePaymentProcessor):
         self.url = self.callback
         self.valid = True
         
-    def capture_payment(self, testing=False, order=None, amount=NOTSET):
+    def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
         """Execute the post to protx VSP DIRECT"""
-        if not order:
-            order = self.order
+        if not purchase:
+            purchase = self.purchase
 
-        if order.paid_in_full:
-            self.log_extra('%s is paid in full, no capture attempted.', order)
-            self.record_payment()
+        if purchase.remaining == Decimal('0.00'):
+            self.log_extra('%s is paid in full, no capture attempted.', purchase)
+            self.record_payment(purchase=purchase)
             return ProcessorResult(self.key, True, _("No charge needed, paid in full."))
 
-        self.log_extra('Capturing payment for %s', order)
+        self.log_extra('Capturing payment for %s', purchase)
 
         if amount == NOTSET:
-            amount = order.balance
+            amount = purchase.remaining
 
-        self.prepare_post(order, amount)
+        self.prepare_post(purchase, amount)
         
         if self.valid:
-            if self.settings.SKIP_POST.value:
+            if self.settings['SKIP_POST']:
                 self.log.info("TESTING MODE - Skipping post to server.  Would have posted %s?%s", self.url, self.postString)
-                payment = self.record_payment(order=order, amount=amount, 
+                payment = self.record_payment(purchase=purchase, amount=amount, 
                     transaction_id="TESTING", reason_code='0')
 
                 return ProcessorResult(self.key, True, _('TESTING MODE'), payment=payment)
@@ -162,26 +184,26 @@ class PaymentProcessor(BasePaymentProcessor):
 
                 except urllib2.URLError, ue:
                     self.log.error("error opening %s\n%s", self.url, ue)
-                    return (False, 'ERROR', 'Could not talk to Protx gateway')
+                    return ProcessorResult(self.key, False, 'ERROR: Could not talk to Protx gateway')
 
                 try:
                     self.response = dict([row.split('=', 1) for row in result.splitlines()])
                     status = self.response['Status']
                     success = (status == 'OK')
                     detail = self.response['StatusDetail']
-                    
+                
                     payment = None
                     transaction_id = ""
                     if success:
                         vpstxid = self.response.get('VPSTxID', '')
                         txauthno = self.response.get('TxAuthNo', '')
                         transaction_id="%s,%s" % (vpstxid, txauthno)
-                        self.log.info('Success on order #%i, recording payment', self.order.id)
-                        payment = self.record_payment(order=order, amount=amount, 
+                        self.log.info('Success on purchase #%i, recording payment', self.purchase.id)
+                        payment = self.record_payment(purchase=purchase, amount=amount, 
                             transaction_id=transaction_id, reason_code=status)
-                            
+                        
                     else:
-                        payment = self.record_failure(order=order, amount=amount, 
+                        payment = self.record_failure(purchase=purchase, amount=amount, 
                             transaction_id=transaction_id, reason_code=status, 
                             details=detail)
 
@@ -189,7 +211,7 @@ class PaymentProcessor(BasePaymentProcessor):
 
                 except Exception, e:
                     self.log.info('Error submitting payment: %s', e)
-                    payment = self.record_failure(order=order, amount=amount, 
+                    payment = self.record_failure(purchase=purchase, amount=amount, 
                         transaction_id="", reason_code="error", 
                         details='Invalid response from bursar gateway')
                     

@@ -14,9 +14,9 @@ from django.test import TestCase
 from django.test.client import Client
 
 SKIP_TESTS = False
-NEED_SETTINGS = """Tests for authorizenet_gateway module require a
+NEED_SETTINGS = """Tests for cybersource_gateway module require a
 CYBERSOURCE_TEST section in settings.BURSAR_SETTINGS.  At a 
-minimum, you must specify the MERCHANT_ID, TRANKEY, and STORE_NAME."""
+minimum, you must specify the 'MERCHANT_ID' and 'TRANKEY'."""
 
 class TestGateway(TestCase):
     def setUp(self):

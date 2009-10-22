@@ -257,14 +257,15 @@ class PaymentRecorder(object):
         return self.payment
         
     def record_failure(self, amount=NOTSET, details="", authorization=None):
-        log.info('Recording a payment failure: order #%i, code %s\nmessage=%s', self.purchase.orderno, self.reason_code, details)
+        log.info('Recording a payment failure: purchase #%s order #%s, code %s\nmessage=%s', 
+            self.purchase, self.purchase.orderno, self.reason_code, details)
         self.amount = amount
             
         failure = PaymentFailure.objects.create(purchase=self.purchase, 
             details=details, 
             transaction_id=self.transaction_id,
             amount = self.amount,
-            payment = self.key,
+            method = self.key,
             reason_code = self.reason_code
         )
         return failure

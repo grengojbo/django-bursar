@@ -46,6 +46,8 @@ def make_test_purchase(payment={}, **kwargs):
             expire_month=payment['expire_month'],
             expire_year=payment['expire_year'],
         )
+        if 'card_holder' in payment:
+            c.card_holder = payment['card_holder']
         c.storeCC(payment['card_number'])
         c.ccv = payment['ccv']
         c.save()        
