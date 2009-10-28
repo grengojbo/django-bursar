@@ -265,7 +265,7 @@ class PaymentProcessor(HeadlessPaymentProcessor):
                 submit['state'] = purchase.bill_state
                 
         ret = []
-        for key, val in submit.items:
-            ret.append('<input type="hidden" name="%s" value="%s"' % (key, val))
+        for key, val in submit.items():
+            ret.append('<input type="hidden" name="%s" value="%s">' % (key, val))
         return mark_safe("\n".join(ret))
 

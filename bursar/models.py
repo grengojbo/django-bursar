@@ -311,7 +311,7 @@ class Purchase(models.Model):
         return None
         
     @property
-    def partially_paid():
+    def partially_paid(self):
         remaining = self.remaining
         return remaining > 0 and remaining < self.total
 
