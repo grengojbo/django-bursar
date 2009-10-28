@@ -11,14 +11,37 @@ be returned after a successful purchase.  In Satchmo, this is "PAYPAL_satchmo_ch
 
 """
 
-from bursar.errors import GatewayError
 from bursar.gateway.base import HeadlessPaymentProcessor
 from bursar.models import Payment, Purchase
 from django.contrib.sites.models import Site
 from django.core import urlresolvers
 from django.utils.http import urlencode
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
+
 import urllib2
+
+PAYMENT_CMD = {
+    'BUY_NOW' : '_xclick',
+    'CART' : '_cart',
+    'SUBSCRIPTION' : '_xclick-subscriptions_'
+}
+
+NO_SHIPPING = {
+    'NO' : '1',
+    'YES' : '0'
+}
+
+NO_NOTE = {
+    'NO' : "1",
+    'YES' : "0"
+}
+
+RECURRING_PAYMENT = {
+    'YES' : "1",
+    'NO' : "0"
+}
+
 
 class PaymentProcessor(HeadlessPaymentProcessor):
     """Paypal payment processor"""
@@ -43,6 +66,11 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             
             # use SSL for checkout
             'SSL' : False,
+            
+            'LOCALE' : 'US',
+            
+            # Reattempt on fail
+            'REATTEMPT' : True,
             
             'LABEL' : _('PayPal'),
             'EXTRA_LOGGING' : False,
@@ -113,7 +141,6 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         self.log_extra("HTTP code %s, response text: '%s'" % (fo.code, ret))
         return False
 
-
     @property
     def ipn_url(self):
         prefix = "http"
@@ -130,7 +157,8 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         url = base + '/' + view_url
         self.log.debug('IPN URL=%s', url)
         return url
-        
+
+
     def submit_url(self):
         if self.is_live():
             url = self.settings['POST_URL']
@@ -139,9 +167,8 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         return url
 
 
-    def prepare_submit_form(self, purchase):
-        """Get a dictionary of information needed to submit to PayPal.
-        """
+    def form(self, purchase):
+        """Render a form for submission to PayPal"""
         live = self.is_live()
         pp = self.settings
         if live:
@@ -151,46 +178,94 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             account = pp['BUSINESS_TEST']
 
         address = pp['RETURN_ADDRESS']
-
-        recurring = None
-        for item in purchase.lineitems.all():
-            if item.is_recurring:
-                recur = item.recurdetails
-                detail = {
-                    'product': item.name, 
-                    'price': recur.recurring_price,
-                    'expire_length' : recur.expire_length,
-                    'expire_unit' : recur.expire_unit,
-                    'recurring_times' : recur.recurring_times,
-                }
-                if recur.trial:
-                    detail['trial1'] = {'price' : recur.trial_price}
-                    detail['trial1']['expire_length'] = recur.trial_length
-                    detail['trial1']['expire_unit'] = recur.expire_unit
-
-                    if recur.trial_times > 1:
-                        if trial1 is not None:
-                            detail['trial2'] = {'price' : recur.trial_price}
-                            detail['trial2']['expire_length'] = recur.trial_length
-                            detail['trial2']['expire_unit'] = recur.expire_unit
-                            
-                if recurring:
-                    self.log.warn("Cannot have more than one subscription in one order for paypal.  Only processing the last one for %s", purchase)
-                recurring = detail
-
-        ipn_url = self.ipn_url
-
-        base_env = {
-            'purchase': purchase,
-            'business': account,
-            'currency_code': pp['CURRENCY_CODE'],
-            'return_address': address,
-            'invoice': purchase.id,
-            'subscription': recurring,
-            'gateway_live' : live,
-            'ipn_url' : ipn_url
+                
+        submit = {
+            'business' : account,
+            'currency_code' : pp['CURRENCY_CODE'],
+            'return' : address,
+            'notify_url' : self.ipn_url
         }
+        
+        #TODO: eventually need to work out the terrible PayPal shipping stuff
+        #      for now, we are saying "no shipping" and adding all shipping as
+        #      a handling charge.
+        submit['no_shipping'] = NO_SHIPPING['YES']
+        submit['handling_cart'] = purchase.shipping
+        submit['tax_cart'] = purchase.tax
+        
+        # Locale
+        submit['lc'] = self.settings['LOCALE']
+        submit['invoice'] = purchase.id
+        
+        recuritems = purchase.recurring_lineitems()
+        if len(recuritems) > 1:
+            self.log.warn("Cannot have more than one subscription in one order for paypal.  Only processing the first one for %s", purchase)
 
-        return base_env
+        if len(recuritems) > 0:
+            recur = recuritems[0]
+            submit['src'] = '1'
+            submit['cmd'] = PAYMENT_CMD['SUBSCRIPTION']
+            submit['item_name'] = recur.product.name
+            submit['item_number'] = recur.product.sku
+            submit['no_note'] = NO_NOTE['YES']
+            submit['bn'] = 'PP-SubscriptionsBF'
+            
+            # initial trial
+            if recur.trial:
+                submit['a1'] = recur.trial_price
+                submit['p1'] = recur.trial_length
+                submit['t1'] = recur.expire_unit
+                
+            if recur.trial_times > 1:
+                submit['a2'] = recur.trial_price
+                submit['p2'] = recur.trial_length
+                submit['t2'] = recur.expire_unit
+                
+            # subscription price
+            submit['a3'] = recur.price
+            submit['p3'] = recur.expire_length
+            submit['t3'] = recur.expire_unit
+            submit['srt'] = recur.recurring_times
+            submit['modify'] = '1'  # new or modify subscription
+            
+            if self.settings['REATTEMPT']:
+                reattempt = '1'
+            else:
+                reattempt = '0'
+            submit['sra'] = reattempt
+            
+        else:
+            submit['cmd'] = PAYMENT_CMD['CART']
+            submit['upload'] = '1'
 
+            if purchase.partially_paid:
+                submit['item_name_1'] = "Remaining Balance for order #%(invoice)s" % {'invoice': purchase.id}
+                submit['amount_1'] = str(purchase.remaining)
+                submit['quantity_1'] = '1'
+            else:
+                ix = 1
+                for item in purchase.lineitems.all():
+                    submit['item_name_%i' % ix] = item.name
+                    submit['amount_%i' % ix] = item.unit_price
+                    submit['quantity_%i' % ix] = item.int_quantity
+                    ix += 1
+                    
+        if purchase.bill_street1:
+            submit['first_name'] = purchase.first_name
+            submit['last_name'] = purchase.last_name
+            submit['address1'] = purchase.bill_street1
+            submit['address2'] = purchase.bill_street2
+            submit['city'] = purchase.bill_city
+            submit['country'] = purchase.bill_country
+            submit['zip'] = purchase.bill_postal_code
+            submit['email'] = purchase.email
+            submit['address_override'] = '0'
+            # only U.S. abbreviations may be used here
+            if purchase.bill_country.lower() == 'us' and len(purchase.bill_state) == 2:
+                submit['state'] = purchase.bill_state
+                
+        ret = []
+        for key, val in submit.items:
+            ret.append('<input type="hidden" name="%s" value="%s"' % (key, val))
+        return mark_safe("\n".join(ret))
 
