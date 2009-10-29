@@ -5,6 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from django.utils.translation import ugettext_lazy as _
 import logging
+import os
 
 log = logging.getLogger('bursar.gateway.base')
 
@@ -156,6 +157,12 @@ class BasePaymentProcessor(object):
         self.log.warn('Module does not implement released_authorized_payment: %s', self.key)
         return ProcessorResult(False, _("Not Implemented"))
         
+    def require_file(self, fname, warning=None):
+        if not os.path.isfile(fname):
+            if not warning:
+                warning="Cannot find file '%s'" % fname
+            raise GatewayError(warning)
+
     def require_settings(self, *args):
         for arg in args:
             val = self.settings.get(arg, None)

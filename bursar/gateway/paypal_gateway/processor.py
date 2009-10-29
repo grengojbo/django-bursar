@@ -11,11 +11,13 @@ be returned after a successful purchase.  In Satchmo, this is "PAYPAL_satchmo_ch
 
 """
 
+from bursar.errors import GatewayError
 from bursar.gateway.base import HeadlessPaymentProcessor
 from bursar.models import Payment, Purchase
 from django.contrib.sites.models import Site
 from django.core import urlresolvers
 from django.utils.http import urlencode
+from django.utils.datastructures import SortedDict
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 
@@ -42,24 +44,26 @@ RECURRING_PAYMENT = {
     'NO' : "0"
 }
 
+#TODO: refactor to use these values
+
+# 'The Paypal URL for real transaction posting'
+POST_URL = "https://www.paypal.com/cgi-bin/webscr"
+
+# The Paypal URL for test transaction posting
+POST_TEST_URL = "https://www.sandbox.paypal.com/cgi-bin/webscr",
 
 class PaymentProcessor(HeadlessPaymentProcessor):
     """Paypal payment processor"""
 
     def __init__(self, settings={}):
         working_settings = {
+            'BUSINESS' : '', #required, your paypal email address
             # Currency code for Paypal transactions.
             'CURRENCY_CODE' : 'USD',  
             
-            # 'The Paypal URL for real transaction posting'
-            'POST_URL' : "https://www.paypal.com/cgi-bin/webscr",
-            
-            # The Paypal URL for test transaction posting
-            'POST_TEST_URL' : "https://www.sandbox.paypal.com/cgi-bin/webscr", 
-            
             #a named view where the customer will
             #be returned after a successful purchase
-            'RETURN_ADDRESS' : "",
+            'RETURN_ADDRESS' : "PAYPAL_GATEWAY_ipn",
             
             # Accept real payments
             'LIVE' : False,
@@ -74,15 +78,38 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             
             'LABEL' : _('PayPal'),
             'EXTRA_LOGGING' : False,
-            }
+            
+            'ENCRYPT' : False,
+            
+            # Path to the public key from PayPal, get this at: 
+            # https://www.paypal.com/us/cgi-bin/webscr?cmd=_profile-website-cert'
+            'PAYPAL_PUBKEY' : "",
+
+            # Path to your paypal private key
+            'PRIVATE_KEY': "",
+
+            # Path to your paypal public key
+            'PUBLIC_KEY' : "",
+            
+            # Your Cert ID, copied from the PayPal website after uploading your public key
+            'PUBLIC_CERT_ID' : ""
+        }
         working_settings.update(settings)                    
 
         super(PaymentProcessor, self).__init__('paypal', working_settings)
-        if self.is_live():
-            self.require_settings("POST_URL", "BUSINESS", "RETURN_ADDRESS")
-        else:
-            self.require_settings("POST_TEST_URL", "BUSINESS_TEST", "RETURN_ADDRESS")
-    
+        self.require_settings("BUSINESS", "RETURN_ADDRESS")
+        if self.settings['ENCRYPT']:
+            self.require_settings("PAYPAL_PUBKEY", "PRIVATE_KEY", "PUBLIC_KEY", "PUBLIC_CERT_ID")
+            self.paypalpubkey = self.settings["PAYPAL_PUBKEY"]
+            self.localprikey = self.settings[ "PRIVATE_KEY"]
+            self.localpubkey = self.settings["PUBLIC_KEY"]
+            self.require_file(self.paypalpubkey)
+            self.require_file(self.localpubkey)
+            self.require_file(self.localprikey)
+            try:
+                import M2Crypto
+            except ImportError:
+                raise GatewayError('paypal_gateway: You must install M2Crypto to use an encrypted PayPal form.')
 
     def accept_ipn(self, invoice, amount, transaction_id, note=""):
         """Mark a PayPal payment as successfully paid - due to a successful IPN confirmation."""
@@ -120,10 +147,10 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         
         if self.is_live():
             self.log.debug("Live IPN on %s", self.key)
-            url = self.settings['POST_URL']
+            url = POST_URL
         else:
             self.log.debug("Test IPN on %s", self.key)
-            url = self.settings['POST_TEST_URL']
+            url = POST_TEST_URL
         
         data['cmd'] = "_notify-validate"
         params = urlencode(data)
@@ -161,14 +188,78 @@ class PaymentProcessor(HeadlessPaymentProcessor):
 
     def submit_url(self):
         if self.is_live():
-            url = self.settings['POST_URL']
+            url = POST_URL
         else:
-            url = self.settings['POST_TEST_URL']
+            url = POST_TEST_URL
         return url
 
 
     def form(self, purchase):
         """Render a form for submission to PayPal"""
+        
+        data = self.get_form_data(purchase)
+        
+        if not self.settings['ENCRYPT']:
+            return self.form_plain(data)
+        else:
+            return self.form_encrypted(data)
+            
+    def form_plain(self, data):
+        ret = []
+        for key, val in data.items():
+            ret.append('<input type="hidden" name="%s" value="%s">' % (key, val))
+        return mark_safe("\n".join(ret))
+
+    def form_encrypted(self, data):
+        from M2Crypto import BIO, SMIME, X509
+        certid = self.settings["PUBLIC_CERT_ID"]
+        ret = ['CERT_ID=%s' % certid]
+        ret.extend([u'%s=%s' % (key, val) for key, val in data.items() if val])
+        raw = "\n".join(ret)
+        raw = raw.encode('utf-8')
+        
+        self.log_extra('Plaintext form: %s', raw)
+        
+        #encrypt the plaintext
+        self.log.info('1')
+        s = SMIME.SMIME()	
+        self.log.info('2')
+        s.load_key_bio(BIO.openfile(self.localprikey), BIO.openfile(self.localpubkey))
+        self.log.info('3')
+        buf = BIO.MemoryBuffer(raw)
+        self.log.info('3.5')
+        p7 = s.sign(buf, flags=SMIME.PKCS7_BINARY)
+        self.log.info('4')
+        x509 = X509.load_cert_bio(BIO.openfile(self.paypalpubkey))
+        self.log.info('5')
+        sk = X509.X509_Stack()
+        self.log.info('6')
+        sk.push(x509)
+        self.log.info('7')
+        s.set_x509_stack(sk)
+        self.log.info('8')
+        s.set_cipher(SMIME.Cipher('des_ede3_cbc'))
+        self.log.info('9')
+        tmp = BIO.MemoryBuffer()
+        self.log.info('10')
+        p7.write_der(tmp)
+        self.log.info('11')
+        p7 = s.encrypt(tmp, flags=SMIME.PKCS7_BINARY)
+        self.log.info('12')
+        out = BIO.MemoryBuffer()
+        self.log.info('13')
+        p7.write(out)	
+        self.log.info('14')
+        form = out.read()
+        self.log.info('15')
+        self.log_extra('Encrypted form: %s', form)
+        return mark_safe(u"""<input type="hidden" name="cmd" value="_s-xclick" />
+<input type="hidden" name="encrypted" value="%s" />
+        """ % form)
+        
+    def get_form_data(self, purchase):
+        """Creates a list of key,val to be sumbitted to PayPal."""
+        
         live = self.is_live()
         pp = self.settings
         if live:
@@ -179,12 +270,12 @@ class PaymentProcessor(HeadlessPaymentProcessor):
 
         address = pp['RETURN_ADDRESS']
                 
-        submit = {
-            'business' : account,
-            'currency_code' : pp['CURRENCY_CODE'],
-            'return' : address,
-            'notify_url' : self.ipn_url
-        }
+        submit = SortedDict()
+        
+        submit['business'] = account
+        submit['currency_code'] = pp['CURRENCY_CODE']
+        submit['return'] = address
+        submit['notify_url'] = self.ipn_url
         
         #TODO: eventually need to work out the terrible PayPal shipping stuff
         #      for now, we are saying "no shipping" and adding all shipping as
@@ -264,8 +355,4 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             if purchase.bill_country.lower() == 'us' and len(purchase.bill_state) == 2:
                 submit['state'] = purchase.bill_state
                 
-        ret = []
-        for key, val in submit.items():
-            ret.append('<input type="hidden" name="%s" value="%s">' % (key, val))
-        return mark_safe("\n".join(ret))
-
+        return submit

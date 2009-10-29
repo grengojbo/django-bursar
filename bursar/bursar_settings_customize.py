@@ -83,6 +83,60 @@ BURSAR_SETTINGS = {
          'TRANKEY': "", #Your Cybersource transaction key - REQUIRED
          'EXTRA_LOGGING': False
      },
+     'PAYPAL' : {
+         # Currency code for Paypal transactions.
+         'CURRENCY_CODE' : 'USD',  
+         #a named view where the customer will
+         #be returned after a successful purchase
+         'RETURN_ADDRESS' : "",
+         # Accept real payments
+         'LIVE' : True,         
+         # use SSL for IPN
+         'SSL' : False,
+         'LOCALE' : 'US',
+         # Reattempt on fail
+         'REATTEMPT' : True,
+         'EXTRA_LOGGING' : False,         
+         # If True, then fill in the next four values, otherwise they are optional.
+         # See docs/paypal.rst for details
+         'ENCRYPT' : False,
+         # Path to the public key from PayPal
+         'PAYPAL_PUBKEY' : "",
+         # Path to your paypal private key
+         'PRIVATE_KEY': "",
+         # Path to your paypal public key
+         'PUBLIC_KEY' : "",
+         # Your Cert ID, copied from the PayPal website after uploading your public key
+         'PUBLIC_CERT_ID' : ""
+     },
+     'PAYPAL_TEST' : {
+          # your paypal email address
+          'BUSINESS' : '',
+          # Currency code for Paypal transactions.
+          'CURRENCY_CODE' : 'USD',  
+          #a named view where the customer will
+          #be returned after a successful purchase
+          'RETURN_ADDRESS' : "",
+          # Accept real payments
+          'LIVE' : False,         
+          # use SSL for IPN
+          'SSL' : False,
+          'LOCALE' : 'US',
+          # Reattempt on fail
+          'REATTEMPT' : True,
+          'EXTRA_LOGGING' : False,         
+          # If True, then fill in the next four values, otherwise they are optional.
+          # See docs/paypal.rst for details
+          'ENCRYPT' : False,
+          # Path to the public key from PayPal
+          'PAYPAL_PUBKEY' : "",
+          # Path to your paypal private key
+          'PRIVATE_KEY': "",
+          # Path to your paypal public key
+          'PUBLIC_KEY' : "",
+          # Your Cert ID, copied from the PayPal website after uploading your public key
+          'PUBLIC_CERT_ID' : ""
+      },
      'PROTX': {
          'LIVE': False,
          'SIMULATOR': False, # Simulated transaction flag - must be false to accept real payments.

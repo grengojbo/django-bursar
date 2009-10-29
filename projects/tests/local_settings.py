@@ -69,7 +69,27 @@ BURSAR_SETTINGS = {
      },
      'PROTX_TEST' : {
         'VENDOR' : 'TEST',
+     },
+     'PAYPAL' : {
+         'LIVE' : False,
+         'BUSINESS' : 'bruce@kroozio.com',
+         'BUSINESS_TEST' : 'seller_1255664539_biz@gmail.com',
+         'EXTRA_LOGGING' : True,
+         'ENCRYPT' : True,
+         'PAYPAL_PUBKEY' : "/opt/webapps/venv/satchmo-bursar/certs/paypal_pubkey.pem",
+         'PRIVATE_KEY': "/opt/webapps/venv/satchmo-bursar/certs/localpaypal_pk.pem",
+         'PUBLIC_KEY' : "/opt/webapps/venv/satchmo-bursar/certs/localpaypal_pub.pem",
+         'PUBLIC_CERT_ID' : "S9Z432VGSELS6"
      }
+}
+
+LIVESETTINGS_OPTIONS = {
+    1 : {
+        'DB' : True,
+        'SETTINGS' : {
+            'PAYMENT_PAYPAL' : BURSAR_SETTINGS['PAYPAL'],
+        }
+    }
 }
 
 #Configure logging
