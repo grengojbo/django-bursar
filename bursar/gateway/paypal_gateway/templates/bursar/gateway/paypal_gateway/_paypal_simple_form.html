@@ -1,0 +1,5 @@
+{% load paypal_tags i18n %}
+<form action="{{ gateway.submit_url }}" method="post">
+{% paypal_submit_form gateway purchase %}
+<input type="image" src="{% paypal_submit_button_url gateway purchase %}" alt="{% trans "Purchase Items" %}" />
+</form>

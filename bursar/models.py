@@ -3,7 +3,7 @@ Stores details about the available payment options.
 Also stores credit card info in an encrypted format.
 """
 
-from bursar.fields import PaymentChoiceCharField, CreditChoiceCharField, CurrencyField
+from bursar.fields import CurrencyField
 from bursar.bursar_settings import get_bursar_setting
 from Crypto.Cipher import Blowfish
 from datetime import datetime
@@ -25,7 +25,7 @@ log = logging.getLogger('bursar.models')
 # ----------------------
 
 class PaymentBase(models.Model):
-    method = PaymentChoiceCharField(_("Payment Method"),
+    method = CharField(_("Payment Method"),
         max_length=25, blank=True)
     amount = CurrencyField(_("amount"), 
         max_digits=18, decimal_places=2, blank=True, null=True)
@@ -88,7 +88,7 @@ class CreditCardDetail(models.Model):
     displayable number.
     """
     payment = models.OneToOneField('Payment', related_name="creditcard")
-    credit_type = CreditChoiceCharField(_("Credit Card Type"), max_length=16)
+    credit_type = models.CharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
         max_length=4, )
     encrypted_cc = models.CharField(_("Encrypted Credit Card"),
