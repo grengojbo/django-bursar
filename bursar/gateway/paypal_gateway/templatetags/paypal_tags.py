@@ -15,3 +15,9 @@ def paypal_submit_button_url(gateway, purchase):
 
 paypal_submit_button_url.is_safe = True
 
+@register.inclusion_tag('bursar/gateway/paypal_gateway/_paypal_simple_form.html')
+def paypal_simple_form(gateway, purchase):
+    return {
+        'gateway' : gateway,
+        'purchase' : purchase
+    }
