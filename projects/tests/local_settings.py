@@ -75,7 +75,7 @@ BURSAR_SETTINGS = {
          'BUSINESS' : 'bruce@kroozio.com',
          'BUSINESS_TEST' : 'seller_1255664539_biz@gmail.com',
          'EXTRA_LOGGING' : True,
-         'ENCRYPT' : True,
+         'ENCRYPT' : False,
          'PAYPAL_PUBKEY' : "/opt/webapps/venv/satchmo-bursar/certs/paypal_pubkey.pem",
          'PRIVATE_KEY': "/opt/webapps/venv/satchmo-bursar/certs/localpaypal_pk.pem",
          'PUBLIC_KEY' : "/opt/webapps/venv/satchmo-bursar/certs/localpaypal_pub.pem",

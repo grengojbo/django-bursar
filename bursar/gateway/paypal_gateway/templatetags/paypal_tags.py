@@ -3,9 +3,15 @@ from django.db import models
 
 register = template.Library()
 
-@register.inclusion_tag("bursar/gateway/paypal_gateway/_paypal_submit_form.html")
+@register.simple_tag
 def paypal_submit_form(gateway, purchase):
-    form = gateway.form(purchase)
-    return {'form' : form}
+    return gateway.form(purchase)
 
 paypal_submit_form.is_safe = True
+
+@register.simple_tag
+def paypal_submit_button_url(gateway, purchase):
+    return gateway.submit_button_url(purchase)
+
+paypal_submit_button_url.is_safe = True
+

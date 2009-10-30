@@ -50,7 +50,7 @@ RECURRING_PAYMENT = {
 POST_URL = "https://www.paypal.com/cgi-bin/webscr"
 
 # The Paypal URL for test transaction posting
-POST_TEST_URL = "https://www.sandbox.paypal.com/cgi-bin/webscr",
+POST_TEST_URL = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 class PaymentProcessor(HeadlessPaymentProcessor):
     """Paypal payment processor"""
@@ -92,7 +92,12 @@ class PaymentProcessor(HeadlessPaymentProcessor):
             'PUBLIC_KEY' : "",
             
             # Your Cert ID, copied from the PayPal website after uploading your public key
-            'PUBLIC_CERT_ID' : ""
+            'PUBLIC_CERT_ID' : "",
+            
+            'BUY_BUTTON_URL' : 'http://images.paypal.com/images/x-click-but01.gif',
+            'SUBSCRIBE_BUTTON_URL' : 'https://www.paypal.com/en_US/i/btn/btn_subscribeCC_LG.gif',
+            'TEST_BUY_BUTTON_URL' : 'https://www.sandbox.paypal.com/en_US/i/btn/btn_buynowCC_LG.gif',
+            'TEST_SUBSCRIBE_BUTTON_URL' : "https://www.sandbox.paypal.com/en_US/i/btn/btn_subscribeCC_LG.gif"
         }
         working_settings.update(settings)                    
 
@@ -183,15 +188,25 @@ class PaymentProcessor(HeadlessPaymentProcessor):
 
         url = base + '/' + view_url
         self.log.debug('IPN URL=%s', url)
-        return url
+        return mark_safe(url)
 
 
+    def submit_button_url(self, purchase):
+        key = 'BUY_BUTTON_URL'
+        if len(purchase.recurring_lineitems()) > 0:
+            key = 'SUBSCRIBE_BUTTON_URL'
+        if not self.is_live():
+            key = "TEST_" + key
+            
+        return mark_safe(self.settings[key])
+
+    @property
     def submit_url(self):
         if self.is_live():
             url = POST_URL
         else:
             url = POST_TEST_URL
-        return url
+        return mark_safe(url)
 
 
     def form(self, purchase):
@@ -211,6 +226,8 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         return mark_safe("\n".join(ret))
 
     def form_encrypted(self, data):
+        """Return an s/mime encrypted form.  Refer to 
+        http://sandbox.rulemaker.net/ngps/m2/howto.smime.html for instructions."""
         from M2Crypto import BIO, SMIME, X509
         certid = self.settings["PUBLIC_CERT_ID"]
         ret = ['CERT_ID=%s' % certid]
@@ -220,38 +237,42 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         
         self.log_extra('Plaintext form: %s', raw)
         
-        #encrypt the plaintext
-        self.log.info('1')
-        s = SMIME.SMIME()	
-        self.log.info('2')
+        # encrypt the plaintext
+        
+        # make an smime object
+        s = SMIME.SMIME()
+        
+        # load our public and private keys	
         s.load_key_bio(BIO.openfile(self.localprikey), BIO.openfile(self.localpubkey))
-        self.log.info('3')
+        
+        # put the data in the buffer
         buf = BIO.MemoryBuffer(raw)
-        self.log.info('3.5')
+        
+        # sign the text
         p7 = s.sign(buf, flags=SMIME.PKCS7_BINARY)
-        self.log.info('4')
+        
+        # Load target cert to encrypt to.
         x509 = X509.load_cert_bio(BIO.openfile(self.paypalpubkey))
-        self.log.info('5')
         sk = X509.X509_Stack()
-        self.log.info('6')
         sk.push(x509)
-        self.log.info('7')
         s.set_x509_stack(sk)
-        self.log.info('8')
+        
+        # Set cipher: 3-key triple-DES in CBC mode.
         s.set_cipher(SMIME.Cipher('des_ede3_cbc'))
-        self.log.info('9')
+        
+        # save data to buffer
         tmp = BIO.MemoryBuffer()
-        self.log.info('10')
         p7.write_der(tmp)
-        self.log.info('11')
+        
+        # encrypt
         p7 = s.encrypt(tmp, flags=SMIME.PKCS7_BINARY)
-        self.log.info('12')
         out = BIO.MemoryBuffer()
-        self.log.info('13')
-        p7.write(out)	
-        self.log.info('14')
+        
+        # write into a new buffer
+        p7.write(out)
+        
+        # read the result
         form = out.read()
-        self.log.info('15')
         self.log_extra('Encrypted form: %s', form)
         return mark_safe(u"""<input type="hidden" name="cmd" value="_s-xclick" />
 <input type="hidden" name="encrypted" value="%s" />
