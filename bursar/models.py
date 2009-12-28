@@ -14,7 +14,6 @@ from django.db import models
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 import base64
-import keyedcache
 import logging
 import operator
 
@@ -25,7 +24,7 @@ log = logging.getLogger('bursar.models')
 # ----------------------
 
 class PaymentBase(models.Model):
-    method = CharField(_("Payment Method"),
+    method = models.CharField(_("Payment Method"),
         max_length=25, blank=True)
     amount = CurrencyField(_("amount"), 
         max_digits=18, decimal_places=2, blank=True, null=True)

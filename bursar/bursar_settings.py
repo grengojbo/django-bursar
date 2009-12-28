@@ -6,7 +6,8 @@ Repurposed from Sphene Community Tools: http://sct.sphene.net
 from django.conf import settings
 
 working_bursar_settings = {
-    'STORE_CREDIT_NUMBERS' : False
+    'STORE_CREDIT_NUMBERS' : False,
+    'CURRENCY' : '$' # Use a '_' for force a space
 }
 
 if hasattr(settings, 'BURSAR_SETTINGS'):

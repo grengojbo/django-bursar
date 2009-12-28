@@ -1,9 +1,9 @@
+from bursar.bursar_settings import get_bursar_setting
 from bursar.numbers import round_decimal
 from decimal import Decimal
 from django import forms
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-from livesettings import config_value
 import logging
 
 log = logging.getLogger('satchmo_utils.widgets')
@@ -54,7 +54,7 @@ class CurrencyWidget(BaseCurrencyWidget):
         if value != '':
             value = _render_decimal(value, places=8)
         rendered = super(CurrencyWidget, self).render(name, value, attrs)
-        curr = config_value('LANGUAGE','CURRENCY')
+        curr = get_bursar_setting('CURRENCY')
         curr = curr.replace("_", "&nbsp;")
         return mark_safe('<span class="currency">%s</span>%s' % (curr, rendered))
 

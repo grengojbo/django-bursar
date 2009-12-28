@@ -10,6 +10,8 @@ settings you need are the "gateway_TEST" entries.
 from django.utils.translation import ugettext_lazy as _
 
 BURSAR_SETTINGS = {
+    'STORE_CREDIT_NUMBERS' : False,
+    'CURRENCY' : '$' # Use a '_' for force a space
     'AUTHORIZENET' : {
         'LIVE' : False,
         'SIMULATE' : False,

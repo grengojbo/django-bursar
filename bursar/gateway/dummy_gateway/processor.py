@@ -55,19 +55,7 @@ class PaymentProcessor(BasePaymentProcessor):
         return True
 
     def capture_payment(self, testing=False, purchase=None, amount=NOTSET):
-        """
-        Process the transaction and return a ProcessorResult:
-
-        Example:
-        >>> from livesettings import config_get_group
-        >>> settings = config_get_group('PAYMENT_DUMMY')
-        >>> from bursar.gateway.dummy.processor import PaymentProcessor
-        >>> processor = PaymentProcessor(settings.dict_values())
-        # If using a normal payment gateway, data should be an Order object.
-        >>> data = {}
-        >>> processor.prepare_data(data)
-        >>> processor.process()
-        ProcessorResult: DUMMY [Success] Success
+        """Process the transaction and return a ProcessorResult:
         """
         assert(purchase)
         payment = self.record_payment(amount=amount, reason_code="0", purchase=purchase)
