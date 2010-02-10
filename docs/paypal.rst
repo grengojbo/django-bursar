@@ -9,7 +9,7 @@ Add "bursar.gateways.paypal_gateway" to your INSTALLED_APPS.  Configure the sett
 Settings
 --------
 
-You can configure any of the following settings::
+You can configure any of the following under BURSAR_SETTINGS in your settings.py::
 
     # Currency code for Paypal transactions.
     'CURRENCY_CODE' : 'USD',  
@@ -51,7 +51,13 @@ You can configure any of the following settings::
     'PUBLIC_KEY' : ""
     
     # Your Cert ID, copied from the PayPal website after uploading your public key
-    'PUBLIC_CERT_ID' = 'get-from-paypal-website'
+    'PUBLIC_CERT_ID' : 'get-from-paypal-website'
+    
+    # The email address of the receiving paypal account (if LIVE is true).
+    'BUSINESS' : 'live_payments@buisness.com'
+    
+    # The email address of the test receiving paypal account (if LIVE is false).
+    'BUSINESS_TEST' : 'test_payments@buisness.com'
 
 Encrypted Forms
 ---------------
