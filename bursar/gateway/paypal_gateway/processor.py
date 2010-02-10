@@ -44,14 +44,6 @@ RECURRING_PAYMENT = {
     'NO' : "0"
 }
 
-#TODO: refactor to use these values
-
-# 'The Paypal URL for real transaction posting'
-POST_URL = "https://www.paypal.com/cgi-bin/webscr"
-
-# The Paypal URL for test transaction posting
-POST_TEST_URL = "https://www.sandbox.paypal.com/cgi-bin/webscr"
-
 class PaymentProcessor(HeadlessPaymentProcessor):
     """Paypal payment processor"""
 
@@ -152,10 +144,10 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         
         if self.is_live():
             self.log.debug("Live IPN on %s", self.key)
-            url = POST_URL
+            url = self.settings['POST_URL']
         else:
             self.log.debug("Test IPN on %s", self.key)
-            url = POST_TEST_URL
+            url = self.settings['POST_TEST_URL']
         
         data['cmd'] = "_notify-validate"
         params = urlencode(data)
@@ -203,9 +195,9 @@ class PaymentProcessor(HeadlessPaymentProcessor):
     @property
     def submit_url(self):
         if self.is_live():
-            url = POST_URL
+            url = self.settings['POST_URL']
         else:
-            url = POST_TEST_URL
+            url = self.settings['POST_TEST_URL']
         return mark_safe(url)
 
 
@@ -307,7 +299,7 @@ class PaymentProcessor(HeadlessPaymentProcessor):
         
         # Locale
         submit['lc'] = self.settings['LOCALE']
-        submit['invoice'] = purchase.id
+        submit['invoice'] = purchase.orderno
         
         recuritems = purchase.recurring_lineitems()
         if len(recuritems) > 1:
