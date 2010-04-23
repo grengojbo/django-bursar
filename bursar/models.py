@@ -13,9 +13,12 @@ from django.contrib.sites.models import Site
 from django.db import models
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+
 import base64
 import logging
 import operator
+
+import keyedcache
 
 log = logging.getLogger('bursar.models')
 
@@ -26,18 +29,18 @@ log = logging.getLogger('bursar.models')
 class PaymentBase(models.Model):
     method = models.CharField(_("Payment Method"),
         max_length=25, blank=True)
-    amount = CurrencyField(_("amount"), 
+    amount = CurrencyField(_("amount"),
         max_digits=18, decimal_places=2, blank=True, null=True)
     time_stamp = models.DateTimeField(_("timestamp"), blank=True, null=True)
     transaction_id = models.CharField(_("Transaction ID"), max_length=45, blank=True, null=True)
     details = models.CharField(_("Details"), max_length=255, blank=True, null=True)
     reason_code = models.CharField(_('Reason Code'),  max_length=255, blank=True, null=True)
 
-    def save(self, force_insert=False, force_update=False):
+    def save(self, **kwargs):
         if not self.pk:
             self.time_stamp = datetime.now()
 
-        super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
+        super(PaymentBase, self).save(**kwargs)
 
     class Meta:
         abstract = True
@@ -62,25 +65,25 @@ class Authorization(PaymentBase):
 
     @property
     def remaining(self):
-        amount = self.purchase.total_payments        
+        amount = self.purchase.total_payments
         remaining = self.purchase.total - amount
         if remaining > self.amount:
             remaining = self.amount
         return remaining
-            
-    def save(self, force_insert=False, force_update=False):
+
+    def save(self, **kwargs):
         # create linked payment
         try:
             capture = self.capture
         except Payment.DoesNotExist:
             log.debug('Payment Authorization - creating linked payment for %s', self.purchase)
-            self.capture = Payment.objects.create_linked(self)
-        super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
+            self.capture = Payment.objects.create_linked(self, **kwargs)
+        super(PaymentBase, self).save(**kwargs)
 
     class Meta:
         verbose_name = _("Order Payment Authorization")
         verbose_name_plural = _("Order Payment Authorizations")
-            
+
 class CreditCardDetail(models.Model):
     """
     Stores an encrypted CC number, its information, and its
@@ -98,7 +101,7 @@ class CreditCardDetail(models.Model):
     start_month = models.IntegerField(_("Start Month"), blank=True, null=True)
     start_year = models.IntegerField(_("Start Year"), blank=True, null=True)
     issue_num = models.CharField(blank=True, null=True, max_length=2)
-    
+
     def storeCC(self, ccnum):
         """
         Take as input a valid cc, encrypt it and store the last 4 digits in a visible form
@@ -113,16 +116,16 @@ class CreditCardDetail(models.Model):
             self.encrypted_cc = _encrypt_code(standin)
             key = _encrypt_code(standin + '-card')
             keyedcache.cache_set(key, skiplog=True, length=60*60, value=encrypted_cc)
-    
+
     def setCCV(self, ccv):
         """
         Put the CCV in the cache, don't save it for security/legal reasons.
         """
         if not self.encrypted_cc:
             raise ValueError('CreditCardDetail expecting a credit card number to be stored before storing CCV')
-            
+
         keyedcache.cache_set(self.encrypted_cc, skiplog=True, length=60*60, value=ccv)
-    
+
     def getCCV(self):
         """Get the CCV from cache"""
         try:
@@ -131,9 +134,9 @@ class CreditCardDetail(models.Model):
             ccv = ""
 
         return ccv
-    
+
     ccv = property(fget=getCCV, fset=setCCV)
-    
+
     @property
     def decryptedCC(self):
         ccnum = _decrypt_code(self.encrypted_cc)
@@ -149,13 +152,13 @@ class CreditCardDetail(models.Model):
     @property
     def expirationDate(self):
         return(str(self.expire_month) + "/" + str(self.expire_year))
-    
+
     class Meta:
         verbose_name = _("Credit Card")
         verbose_name_plural = _("Credit Cards")
 
 class PaymentManager(models.Manager):
-    def create_linked(self, other):
+    def create_linked(self, other, **kwargs):
         linked = Payment(
                 purchase = other.purchase,
                 method = other.method,
@@ -163,7 +166,7 @@ class PaymentManager(models.Manager):
                 transaction_id="LINKED",
                 details=other.details,
                 reason_code="")
-        linked.save()
+        linked.save(**kwargs)
         return linked
 
 class Payment(PaymentBase):
@@ -179,7 +182,7 @@ class Payment(PaymentBase):
             return u"Payment #%i: amount=%s" % (self.id, self.amount)
         else:
             return u"Payment (unsaved)"
-            
+
     def add_note(self, note):
         PaymentNote.objects.create(payment=self, note=note)
 
@@ -204,22 +207,22 @@ class PaymentPending(PaymentBase):
     """
     purchase = models.ForeignKey('Purchase', related_name="paymentspending")
     capture = models.ForeignKey(Payment, related_name="paymentspending")
-    
+
     def __unicode__(self):
         if self.id is not None:
             return u"Pending Payment #%i" % self.id
         else:
             return u"Pending Payment (unsaved)"
 
-    def save(self, force_insert=False, force_update=False):
+    def save(self, **kwargs):
         # create linked payment
         try:
             capture = self.capture
         except Payment.DoesNotExist:
             log.debug('Pending Payment - creating linked payment')
-            self.capture = Payment.objects.create_linked(self)
-            
-        super(PaymentBase, self).save(force_insert=force_insert, force_update=force_update)
+            self.capture = Payment.objects.create_linked(self, **kwargs)
+
+        super(PaymentBase, self).save(**kwargs)
 
     class Meta:
         verbose_name = _("Pending Payment")
@@ -252,7 +255,7 @@ class Purchase(models.Model):
     bill_state = models.CharField(_("State"), max_length=50, default="")
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, default="")
     bill_country = models.CharField(_("Country"), max_length=2, default="")
-    sub_total = CurrencyField(_("Subtotal"), 
+    sub_total = CurrencyField(_("Subtotal"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
         max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
@@ -265,7 +268,7 @@ class Purchase(models.Model):
     objects = PurchaseManager()
 
     def __unicode__(self):
-        return "Purchase #%s on Order #%s" % (self.id, self.orderno)
+        return u"Purchase #%s on Order #%s" % (self.id, self.orderno)
 
     @property
     def authorized_remaining(self):
@@ -277,7 +280,7 @@ class Purchase(models.Model):
             amount = Decimal('0.00')
 
         return amount
-        
+
     @property
     def credit_card(self):
         """Return the credit card associated with this payment.
@@ -288,7 +291,7 @@ class Purchase(models.Model):
             except CreditCardDetail.DoesNotExist:
                 pass
         return None
-        
+
     @property
     def full_bill_street(self, delim="\n"):
         """
@@ -300,7 +303,7 @@ class Purchase(models.Model):
         else:
             address = self.bill_street1
         return mark_safe(address)
-        
+
     def get_pending(self, method, raises=True):
         pending = self.paymentspending.filter(method__exact=method)
         if pending.count() > 0:
@@ -308,7 +311,7 @@ class Purchase(models.Model):
         elif raises:
             raise PaymentPending.DoesNotExist(method)
         return None
-        
+
     @property
     def partially_paid(self):
         remaining = self.remaining
@@ -320,7 +323,7 @@ class Purchase(models.Model):
             shipping = Decimal('0.00')
             tax = Decimal('0.00')
             for item in self.lineitems.all():
-                subtotal += item.sub_total
+                subtotal += item.sub_total - item.discount
                 shipping += item.shipping
                 tax += item.tax
             self.sub_total = subtotal
@@ -333,21 +336,21 @@ class Purchase(models.Model):
                 self.tax = tax
             if self.tax == None:
                 self.tax = zero
-                                
+
         self.total = self.sub_total + self.tax + self.shipping
-        log.debug("Purchase #%s recalc: sub_total=%s, shipping=%s, tax=%s, total=%s", 
+        log.debug("Purchase #%s recalc: sub_total=%s, shipping=%s, tax=%s, total=%s",
             self.id, self.sub_total, self.shipping, self.tax, self.total)
 
     def recurring_lineitems(self):
         """Get all recurring lineitems"""
         subscriptions = [item for item in self.lineitems.all() if item.is_recurring]
         return subscriptions
-    
+
     @property
     def remaining(self):
         """Return the total less the payments and auths"""
         return self.total - self.total_payments - self.authorized_remaining
-    
+
     def save(self, **kwargs):
         """
         Copy addresses from contact. If the order has just been created, set
@@ -355,7 +358,7 @@ class Purchase(models.Model):
         """
         if not self.pk:
             self.time_stamp = datetime.now()
-        
+
         try:
             site = self.site
         except Site.DoesNotExist:
@@ -363,7 +366,7 @@ class Purchase(models.Model):
         if not site:
             self.site = Site.objects.get_current()
         super(Purchase, self).save(**kwargs)
-        
+
     @property
     def total_payments(self):
         """Returns the total value of all completed payments"""
@@ -375,19 +378,19 @@ class Purchase(models.Model):
         log.debug("total payments for %s=%s", self, amount)
         return amount
 
-  
+
 class LineItem(models.Model):
     """A single line item in a purchase.  This is optional, only needed for certain
     gateways such as Google or PayPal."""
     sku = models.CharField(_("SKU"), max_length=255, default="1")
-    purchase = models.ForeignKey(Purchase, 
+    purchase = models.ForeignKey(Purchase,
         verbose_name=_("Purchase"), related_name="lineitems")
     ordering = models.PositiveIntegerField(_('Ordering'),
         default=0)
     name = models.CharField(_('Item'), max_length=100)
-    description = models.TextField(_('Description'), 
+    description = models.TextField(_('Description'),
         blank=True)
-    quantity = models.DecimalField(_("Quantity"),  
+    quantity = models.DecimalField(_("Quantity"),
         max_digits=18, decimal_places=6,
         default=Decimal('1'))
     unit_price = CurrencyField(_("Unit price"),
@@ -395,7 +398,7 @@ class LineItem(models.Model):
     sub_total = CurrencyField(_("Line item price"),
         max_digits=18, decimal_places=10)
     shipping = CurrencyField(_("Shipping price"),
-        max_digits=18, decimal_places=10, 
+        max_digits=18, decimal_places=10,
         default=Decimal('0.00'))
     discount = CurrencyField(_("Line item discount"),
         max_digits=18, decimal_places=10,
@@ -406,10 +409,10 @@ class LineItem(models.Model):
     total = CurrencyField(_("Total"),
         max_digits=18, decimal_places=2,
         default=Decimal('0.00'))
-    
+
     class Meta:
         ordering = ('ordering',)
-        
+
     @property
     def int_quantity(self):
         return self.quantity.quantize(Decimal('1'), ROUND_UP)
@@ -422,37 +425,37 @@ class LineItem(models.Model):
                 recur = True
         except RecurringLineItem.DoesNotExist:
             pass
-        
+
         return recur
-        
+
     def recalc(self):
         """Recalculate totals"""
         self.sub_total = self.quantity * self.unit_price
         self.total = self.sub_total - self.discount + self.tax + self.shipping
-                
+
     def __unicode__(self):
-        return "LineItem: %s - %d" % (self.name, self.total) 
+        return u"LineItem: %s - %d" % (self.name, self.total)
 
 class RecurringLineItem(models.Model):
     """Extra information needed for a recurring line item, such as a subscription.
-    
+
     To make a trial, put the trial price, tax, etc. into the parent LineItem, and mark this object
     trial=True, trial_length=xxx
     """
-    lineitem = models.OneToOneField(LineItem, verbose_name=_("Line Item"), 
+    lineitem = models.OneToOneField(LineItem, verbose_name=_("Line Item"),
         primary_key=True, related_name="recurdetails")
-    recurring = models.BooleanField(_("Recurring Billing"), 
-        help_text=_("Customer will be charged the regular product price on a periodic basis."), 
+    recurring = models.BooleanField(_("Recurring Billing"),
+        help_text=_("Customer will be charged the regular product price on a periodic basis."),
         default=False)
     recurring_price = CurrencyField("Recurring Price", default=Decimal('0.00'),
         max_digits=18, decimal_places=2)
     recurring_shipping = CurrencyField("Recurring Shipping Price", default=Decimal('0.00'),
         max_digits=18, decimal_places=2)
-    recurring_times = models.PositiveIntegerField(_("Recurring Times"), 
-        help_text=_("Number of payments which will occur at the regular rate.  (optional)"), 
+    recurring_times = models.PositiveIntegerField(_("Recurring Times"),
+        help_text=_("Number of payments which will occur at the regular rate.  (optional)"),
         default=0)
-    expire_length = models.PositiveIntegerField(_("Duration"), 
-        help_text=_("Length of each billing cycle"), 
+    expire_length = models.PositiveIntegerField(_("Duration"),
+        help_text=_("Length of each billing cycle"),
         null=True, blank=True)
     trial = models.BooleanField(_("Trial?"), default=False)
     trial_price = CurrencyField("Trial Price", default=Decimal('0.00'),
@@ -467,7 +470,7 @@ class RecurringLineItem(models.Model):
         ('DAY', _('Days')),
         ('MONTH', _('Months'))
     )
-    expire_unit = models.CharField(_("Expire Unit"), max_length=5, 
+    expire_unit = models.CharField(_("Expire Unit"), max_length=5,
         choices=SUBSCRIPTION_UNITS, default="DAY", null=False)
     SHIPPING_CHOICES = (
         ('0', _('No Shipping Charges')),
