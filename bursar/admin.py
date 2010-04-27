@@ -161,9 +161,9 @@ class PurchaseOptions(admin.ModelAdmin):
 
 class PaymentOptions(AutocompleteAdmin):
     list_filter = ['method']
-    list_display = ['id', 'transaction_id', 'success', 'method', 'amount', 'time_stamp']
+    list_display = ['id', 'transaction_id', 'success', 'method', 'amount']
     fieldsets = (
-        (None, {'fields': ('purchase','success', 'method', 'amount',  'transaction_id', 'reason_code', 'time_stamp', 'details')}), )
+        (None, {'fields': ('purchase','success', 'method', 'amount',  'transaction_id', 'reason_code', 'details')}), )
     raw_id_fields = ['purchase']
     inlines = [CreditCardDetail_Inline, PaymentNote_Inline]
 

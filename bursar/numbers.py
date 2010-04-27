@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8; -*- 
 from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, InvalidOperation, getcontext
 from django import forms
 from django.utils.translation import ugettext as _

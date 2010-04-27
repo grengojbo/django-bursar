@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8; -*- 
 """
 Stores details about the available payment options.
 Also stores credit card info in an encrypted format.
