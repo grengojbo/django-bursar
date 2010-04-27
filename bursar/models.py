@@ -1,3 +1,4 @@
+# -*- mode: python; coding: utf-8; -*- 
 """
 Stores details about the available payment options.
 Also stores credit card info in an encrypted format.
@@ -28,11 +29,13 @@ log = logging.getLogger('bursar.models')
 
 class PaymentBase(models.Model):
     method = models.CharField(_("Payment Method"),
-        max_length=25, blank=True)
+                              max_length=25, blank=True)
     amount = CurrencyField(_("amount"),
-        max_digits=18, decimal_places=2, blank=True, null=True)
-    time_stamp = models.DateTimeField(_("timestamp"), blank=True, null=True)
-    transaction_id = models.CharField(_("Transaction ID"), max_length=45, blank=True, null=True)
+                           max_digits=18, decimal_places=2, blank=True, null=True)
+    #time_stamp = models.DateTimeField(_("timestamp"), blank=True, null=True)
+    time_stamp = models.DateTimeField(_("timestamp"), auto_now_add=True)
+    transaction_id = models.CharField(_("Transaction ID"), max_length=45, unique=True)
+    #transaction_id = models.CharField(_("Transaction ID"), max_length=45, blank=True, null=True)
     details = models.CharField(_("Details"), max_length=255, blank=True, null=True)
     reason_code = models.CharField(_('Reason Code'),  max_length=255, blank=True, null=True)
 
@@ -92,9 +95,9 @@ class CreditCardDetail(models.Model):
     payment = models.OneToOneField('Payment', related_name="creditcard")
     credit_type = models.CharField(_("Credit Card Type"), max_length=16)
     display_cc = models.CharField(_("CC Number (Last 4 digits)"),
-        max_length=4, )
+                                  max_length=4, )
     encrypted_cc = models.CharField(_("Encrypted Credit Card"),
-        max_length=40, blank=True, null=True, editable=False)
+                                    max_length=40, blank=True, null=True, editable=False)
     expire_month = models.IntegerField(_("Expiration Month"))
     expire_year = models.IntegerField(_("Expiration Year"))
     card_holder = models.CharField(_("card_holder Name"), max_length=60, blank=True)
@@ -160,12 +163,12 @@ class CreditCardDetail(models.Model):
 class PaymentManager(models.Manager):
     def create_linked(self, other, **kwargs):
         linked = Payment(
-                purchase = other.purchase,
-                method = other.method,
-                amount=Decimal('0.00'),
-                transaction_id="LINKED",
-                details=other.details,
-                reason_code="")
+            purchase = other.purchase,
+            method = other.method,
+            amount=Decimal('0.00'),
+            transaction_id="LINKED",
+            details=other.details,
+            reason_code="")
         linked.save(**kwargs)
         return linked
 
@@ -256,13 +259,13 @@ class Purchase(models.Model):
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, default="")
     bill_country = models.CharField(_("Country"), max_length=2, default="")
     sub_total = CurrencyField(_("Subtotal"),
-        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
+                              max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     tax = CurrencyField(_("Tax"),
-        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
+                        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     shipping = CurrencyField(_("Shipping Cost"),
-        max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
+                             max_digits=18, decimal_places=2, blank=True, null=True, display_decimal=4)
     total = CurrencyField(_("Total"),
-        max_digits=18, decimal_places=2, display_decimal=4)
+                          max_digits=18, decimal_places=2, display_decimal=4)
     time_stamp = models.DateTimeField(_("Timestamp"), blank=True, null=True)
 
     objects = PurchaseManager()
@@ -339,7 +342,7 @@ class Purchase(models.Model):
 
         self.total = self.sub_total + self.tax + self.shipping
         log.debug("Purchase #%s recalc: sub_total=%s, shipping=%s, tax=%s, total=%s",
-            self.id, self.sub_total, self.shipping, self.tax, self.total)
+                  self.id, self.sub_total, self.shipping, self.tax, self.total)
 
     def recurring_lineitems(self):
         """Get all recurring lineitems"""
@@ -384,31 +387,31 @@ class LineItem(models.Model):
     gateways such as Google or PayPal."""
     sku = models.CharField(_("SKU"), max_length=255, default="1")
     purchase = models.ForeignKey(Purchase,
-        verbose_name=_("Purchase"), related_name="lineitems")
+                                 verbose_name=_("Purchase"), related_name="lineitems")
     ordering = models.PositiveIntegerField(_('Ordering'),
-        default=0)
+                                           default=0)
     name = models.CharField(_('Item'), max_length=100)
     description = models.TextField(_('Description'),
-        blank=True)
+                                   blank=True)
     quantity = models.DecimalField(_("Quantity"),
-        max_digits=18, decimal_places=6,
-        default=Decimal('1'))
+                                   max_digits=18, decimal_places=6,
+                                   default=Decimal('1'))
     unit_price = CurrencyField(_("Unit price"),
-        max_digits=18, decimal_places=10)
+                               max_digits=18, decimal_places=10)
     sub_total = CurrencyField(_("Line item price"),
-        max_digits=18, decimal_places=10)
+                              max_digits=18, decimal_places=10)
     shipping = CurrencyField(_("Shipping price"),
-        max_digits=18, decimal_places=10,
-        default=Decimal('0.00'))
+                             max_digits=18, decimal_places=10,
+                             default=Decimal('0.00'))
     discount = CurrencyField(_("Line item discount"),
-        max_digits=18, decimal_places=10,
-        default=Decimal('0.00'))
+                             max_digits=18, decimal_places=10,
+                             default=Decimal('0.00'))
     tax = CurrencyField(_("Line item tax"),
-        max_digits=18, decimal_places=10,
-        default=Decimal('0.00'))
+                        max_digits=18, decimal_places=10,
+                        default=Decimal('0.00'))
     total = CurrencyField(_("Total"),
-        max_digits=18, decimal_places=2,
-        default=Decimal('0.00'))
+                          max_digits=18, decimal_places=2,
+                          default=Decimal('0.00'))
 
     class Meta:
         ordering = ('ordering',)
@@ -443,35 +446,35 @@ class RecurringLineItem(models.Model):
     trial=True, trial_length=xxx
     """
     lineitem = models.OneToOneField(LineItem, verbose_name=_("Line Item"),
-        primary_key=True, related_name="recurdetails")
+                                    primary_key=True, related_name="recurdetails")
     recurring = models.BooleanField(_("Recurring Billing"),
-        help_text=_("Customer will be charged the regular product price on a periodic basis."),
-        default=False)
+                                    help_text=_("Customer will be charged the regular product price on a periodic basis."),
+                                    default=False)
     recurring_price = CurrencyField("Recurring Price", default=Decimal('0.00'),
-        max_digits=18, decimal_places=2)
+                                    max_digits=18, decimal_places=2)
     recurring_shipping = CurrencyField("Recurring Shipping Price", default=Decimal('0.00'),
-        max_digits=18, decimal_places=2)
+                                       max_digits=18, decimal_places=2)
     recurring_times = models.PositiveIntegerField(_("Recurring Times"),
-        help_text=_("Number of payments which will occur at the regular rate.  (optional)"),
-        default=0)
+                                                  help_text=_("Number of payments which will occur at the regular rate.  (optional)"),
+                                                  default=0)
     expire_length = models.PositiveIntegerField(_("Duration"),
-        help_text=_("Length of each billing cycle"),
-        null=True, blank=True)
+                                                help_text=_("Length of each billing cycle"),
+                                                null=True, blank=True)
     trial = models.BooleanField(_("Trial?"), default=False)
     trial_price = CurrencyField("Trial Price", default=Decimal('0.00'),
-        max_digits=18, decimal_places=2)
+                                max_digits=18, decimal_places=2)
     trial_length = models.PositiveIntegerField(_("Trial length"),
-        help_text="Number of subscription units for the trial",
-        default=0)
+                                               help_text="Number of subscription units for the trial",
+                                               default=0)
     trial_times = models.PositiveIntegerField(_("Trial Times"),
-            help_text="Number of trial cycles",
-            default=1)
+                                              help_text="Number of trial cycles",
+                                              default=1)
     SUBSCRIPTION_UNITS = (
         ('DAY', _('Days')),
         ('MONTH', _('Months'))
     )
     expire_unit = models.CharField(_("Expire Unit"), max_length=5,
-        choices=SUBSCRIPTION_UNITS, default="DAY", null=False)
+                                   choices=SUBSCRIPTION_UNITS, default="DAY", null=False)
     SHIPPING_CHOICES = (
         ('0', _('No Shipping Charges')),
         ('1', _('Pay Shipping Once')),
