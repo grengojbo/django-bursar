@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, InvalidOperation, getcontext
+from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP, InvalidOperation, getcontext
 from django import forms
 from django.utils.translation import ugettext as _
 import logging
@@ -73,7 +73,7 @@ def round_decimal(val='0', places=None, roundfactor='0', normalize=True):
     #-- Adjust number of decimal places if caller provided decimal places
     if places != None:
         decmask = '0.'.ljust(places+2,'0') #i.e. => '.00' if places eq 2
-        decval=decval.quantize(Decimal(decmask), rounding=ROUND_DOWN)  #convert to Decimal and truncate to two decimals
+        decval=decval.quantize(Decimal(decmask), rounding=ROUND_UP)  #convert to Decimal and truncate to two decimals
 
     #-- normalize - strips the rightmost zeros... i.e. 2.0 => returns as 2
     if normalize:
